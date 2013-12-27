@@ -1,0 +1,9 @@
+#!/usr/bin/bash
+benchmark=$1
+cwd=${PWD}
+
+trap 'cd "$cwd"' EXIT
+
+cd "$cwd/benchmark"
+
+exit 0

@@ -1,0 +1,8 @@
+node_modules/*
+urlparser.sublime-workspace
+urlparser.sublime-project
+npm-debug.log
+nodex64.exe
+throwaway.js
+reader.js
+bump.js
