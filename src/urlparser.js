@@ -31,8 +31,9 @@ Url.prototype.parse = function Url$parse(str) {
     if (this._protocol !== "javascript") {
         start = this._parseHost(str, start, end);
     }
+
     if (start < end) {
-        var ch = str.charCodeAt(start);
+        var ch = str.charCodeAt(start, str.slice(start, end));
 
         if (ch === SLASH) {
             this._parsePath(str, start + 1, end);
@@ -64,7 +65,8 @@ Url.prototype.format = function Url$format() {
     var search = this.search !== "" ? this.search : this._queryToSearch();
     var hostname = this.hostname;
     var port = this._port;
-    var host = "";
+    var host = false;
+    var scheme = "";
 
     if (this.host !== "") {
         host = auth + this.host;
@@ -74,10 +76,11 @@ Url.prototype.format = function Url$format() {
     }
 
     var slashes = this.slashes ||
-        protocol === "" ||
-        this._slashProtocols[protocol];
+        ((protocol === "" ||
+        this._slashProtocols[protocol]) && host !== false);
 
-    var scheme = protocol + (slashes ? "://" : ":");
+
+    if (protocol !== "") scheme = protocol + (slashes ? "://" : ":");
 
     if (slashes && pathname !== "" && pathname.charCodeAt(0) !== SLASH) {
         pathname = "/" + pathname;
@@ -95,7 +98,7 @@ Url.prototype.format = function Url$format() {
 
     search = this._escapeSearch(search);
 
-    return scheme + host + pathname + search + hash;
+    return scheme + (host === false ? "" : host) + pathname + search + hash;
 };
 
 Url.prototype._queryToSearch = function Url$_queryToSearch() {
@@ -123,6 +126,7 @@ Url.prototype._escapeSearch = function Url$_escapeSearch(search) {
 
 Url.prototype._parseProtocol = function Url$_parseProtocol(str, start, end) {
     var doLowerCase = false;
+    var protocolCharacters = this._protocolCharacters;
 
     for (var i = start; i <= end; ++i) {
         var ch = str.charCodeAt(i);
@@ -130,14 +134,17 @@ Url.prototype._parseProtocol = function Url$_parseProtocol(str, start, end) {
         if (ch === COLON) {
             var protocol = str.slice(start, i);
             if (doLowerCase) protocol = protocol.toLowerCase();
-            if (this._rvalidprotocol.test(protocol)) {
-                this._protocol = protocol;
-            }
+            this._protocol = protocol;
             return i + 1;
         }
-        else if (ch < FIRST_LOWER_CASE) {
-            doLowerCase = true;
+        else if (protocolCharacters[ch] === 1) {
+            if (ch < FIRST_LOWER_CASE)
+                doLowerCase = true;
         }
+        else {
+            return i;
+        }
+
     }
     return -1;
 };
@@ -177,8 +184,10 @@ Url.prototype._parsePort = function Url$_parsePort(str, start, end) {
 
 Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
     if (str.charCodeAt(start) === SLASH &&
-        str.charCodeAt(start + 1 === SLASH)) {
+        str.charCodeAt(start + 1) === SLASH) {
+        if (start === 0) return start;
         start += 2;
+        this.slashes = true;
     }
 
     var doLowerCase = false;
@@ -396,7 +405,8 @@ Object.defineProperty(Url.prototype, "path", {
 
 Object.defineProperty(Url.prototype, "protocol", {
     get: function() {
-        return this._protocol + ":";
+        var proto = this._protocol;
+        return proto === "" ? "" : proto + ":";
     },
     set: function(v) {
         this._protocol = v.slice(0, v.length - 1);
@@ -467,7 +477,11 @@ Url.prototype._slashProtocols = {
     ftp: true
 };
 
-Url.prototype._rvalidprotocol = /^[a-z.+-]+$/;
+Url.prototype._protocolCharacters = makeAsciiTable([
+    [FIRST_LOWER_CASE, LAST_LOWER_CASE],
+    [FIRST_UPPER_CASE, LAST_UPPER_CASE],
+    DOT, PLUS, HYPHEN
+]);
 
 Url.prototype._hostEndingCharacters = makeAsciiTable([
     HASH, QUESTION_MARK, SLASH

@@ -208,7 +208,22 @@ describe("basic tests", function() {
 
         a = Url.parse("http://" + tooManyShortLabels + "/asd?abc");
         assert.equal(a.href, "http:///asd?abc");
-    })
+
+    });
+
+    specify("no protocol", function() {
+        a = Url.parse('/path?q=blah&other=meh#blargh:008');
+        assert.equal(a.pathname, "/path");
+        assert.equal(a.search, "?q=blah&other=meh");
+        assert.equal(a.hash, "#blargh:008");
+        assert.equal(a.href, '/path?q=blah&other=meh#blargh:008')
+
+        a = Url.parse('//path?q=blah&other=meh#blargh:008');
+        assert.equal(a.pathname, "//path");
+        assert.equal(a.search, "?q=blah&other=meh");
+        assert.equal(a.hash, "#blargh:008");
+        assert.equal(a.href, '//path?q=blah&other=meh#blargh:008')
+    });
 
     specify("ip6", function() {
 
