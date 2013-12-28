@@ -117,6 +117,15 @@ describe("basic tests", function() {
     });
 
     specify("autoescape some chars in the result", function() {
+        a = Url.parse("http://www.google.com# k");
+        assert.equal(a.hash, "#%20k");
+
+        a = Url.parse("http://www.google.com? k");
+        assert(a.search === "?%20k");
+
+        a = Url.parse("http://www.google.com/ k");
+        assert(a.pathname === "/%20k");
+
         a = Url.parse("http://www.google.com#{}");
         assert(a.hash === "#%7B%7D");
 
@@ -148,6 +157,63 @@ describe("basic tests", function() {
         assert(a.href === "http://www.google.com/a%7Bb%7D%7B%7D?a%7Bb%7D%7B%7D#a%7Bb%7D%7B%7D");
     });
 
-    //Escape for hash, qs, path: also boundaries
+    specify("weird protocols", function() {
+        a = Url.parse("javascript:alert('hello world');");
+        assert.equal(a.host, "");
+        assert.equal(a.pathname, "alert('hello world');");
+        assert.equal(a.href, "javascript:alert('hello world');");
+
+        a = Url.parse("mailto:user@example.com?subject=Message Title&body=Message Content");
+        assert.equal(a.href, 'mailto:user@example.com?subject=Message%20Title&body=Message%20Content');
+
+        a = Url.parse("file:///C:/Users/Petka%20Antonov/urlparser/.npmignore");
+        assert.equal(a.hostname, "");
+        assert.equal(a.pathname, "/C:/Users/Petka%20Antonov/urlparser/.npmignore");
+        assert.equal(a.href, "file:///C:/Users/Petka%20Antonov/urlparser/.npmignore");
+    });
+
+    specify("ports", function() {
+        a = Url.parse("http://www.google.com:80");
+        assert.equal(a.port, "80");
+
+        a = Url.parse("http://www.google.com:8080");
+        assert.equal(a.port, "8080");
+
+        a = Url.parse("http://www.google.com:");
+        assert.equal(a.port, "");
+
+        a = Url.parse("http://www.google.com:008");
+        assert.equal(a.port, "8");
+    });
+
+    specify("syntax errors on hosts", function() {
+        a = Url.parse("http://...");
+        assert.equal(a.href, "http://.../");
+
+        var tooLongLabel = new Array(89).join("a");
+        var shortLabel = new Array(5).join("a");
+        var tooManyShortLabels = new Array(80);
+
+        for( var i = 0, len = tooManyShortLabels.length; i < len; ++i ) {
+            tooManyShortLabels[i] = shortLabel;
+        }
+
+        tooManyShortLabels = tooManyShortLabels.join(".");
+
+        a = Url.parse("http://" + tooLongLabel + ".");
+        assert.equal(a.href, 'http://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/aaaaaaaaaaaaaaaaaaaaaaaaa.');
+
+        a = Url.parse("http://" + tooLongLabel + ".asd");
+        assert.equal(a.href, 'http://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/aaaaaaaaaaaaaaaaaaaaaaaaa.asd');
+
+        a = Url.parse("http://" + tooManyShortLabels + "/asd?abc");
+        assert.equal(a.href, "http:///asd?abc");
+    })
+
+    specify("ip6", function() {
+
+    });
+
+    //Syntax errors
 });
 

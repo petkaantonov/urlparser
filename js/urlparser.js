@@ -46,14 +46,12 @@ Url.prototype.parse = function Url$parse(str) {
     start = this._parseProtocol(str, start, end);
 
     if (start < 0) {
-        throw new SyntaxError("invalid protocol");
+        return;
     }
 
     if (this._protocol !== "javascript") {
         start = this._parseHost(str, start, end);
     }
-
-
     if (start < end) {
         var ch = str.charCodeAt(start);
 
@@ -67,7 +65,7 @@ Url.prototype.parse = function Url$parse(str) {
             this._parseHash(str, start + 1, end);
         }
         else {
-            throw new SyntaxError("");
+            this.pathname = str.slice(start, end + 1);
         }
     }
 };
@@ -102,14 +100,20 @@ Url.prototype.format = function Url$format() {
 
     var scheme = protocol + (slashes ? "://" : ":");
 
-    if (pathname !== "" && pathname.charCodeAt(0) !== 47)
+    if (slashes && pathname !== "" && pathname.charCodeAt(0) !== 47) {
         pathname = "/" + pathname;
+    }
+    else if (!slashes && pathname === "/") {
+        pathname = "";
+    }
     if (search !== "" && search.charCodeAt(0) !== 63)
         search = "?" + search;
     if (hash !== "" && hash.charCodeAt(0) !== 35)
         hash = "#" + hash;
 
     pathname = this._escapePathName(pathname);
+
+
     search = this._escapeSearch(search);
 
     return scheme + host + pathname + search + hash;
@@ -142,10 +146,9 @@ Url.prototype._parseProtocol = function Url$_parseProtocol(str, start, end) {
         if (ch === 58) {
             var protocol = str.slice(start, i);
             if (doLowerCase) protocol = protocol.toLowerCase();
-            if (!this._rvalidprotocol.test(protocol)) {
-                throw new SyntaxError("invalid protocol");
+            if (this._rvalidprotocol.test(protocol)) {
+                this._protocol = protocol;
             }
-            this._protocol = protocol;
             return i + 1;
         }
         else if (ch < 97) {
@@ -165,22 +168,23 @@ Url.prototype._parseAuth = function Url$_parseAuth(str, start, end, decode) {
 
 Url.prototype._parsePort = function Url$_parsePort(str, start, end) {
     var port = 0;
+    var hadChars = false;
+
     for (var i = start; i <= end; ++i) {
         var ch = str.charCodeAt(i);
 
         if (48 <= ch && ch <= 57) {
             port = (10 * port) + (ch - 48);
+            hadChars = true;
         }
         else break;
 
     }
-
-    if (port === 0) {
-        throw new SyntaxError("");
+    if (port === 0 && !hadChars) {
+        return 0;
     }
 
     this._port = port;
-
     return i - start;
 };
 
@@ -188,94 +192,82 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
     if (str.charCodeAt(start) === 47 &&
         str.charCodeAt(start + 1 === 47)) {
         start += 2;
+    }
 
-        var authParsed = false;
-        var doLowerCase = false;
-        var idna = false;
-        var hostNameStart = start;
-        var hostNameEnd = end;
-        var lastCh = -1;
-        var portLength = 0;
-        var charsAfterDot = 0;
+    var doLowerCase = false;
+    var idna = false;
+    var hostNameStart = start;
+    var hostNameEnd = end;
+    var lastCh = -1;
+    var portLength = 0;
+    var charsAfterDot = 0;
 
-        loop: for (var i = start; i <= end; ++i) {
-            if (charsAfterDot > 63) {
-                throw new SyntaxError("");
-            }
-            var ch = str.charCodeAt(i);
+    loop: for (var i = start; i <= end; ++i) {
+        if (charsAfterDot > 62) {
+            this.hostname = this.host = str.slice(start, i);
+            return i;
+        }
+        var ch = str.charCodeAt(i);
 
-            if (ch === 64) {
-                if (authParsed) throw new SyntaxError("");
-                var hostEndingCharacters = this._hostEndingCharacters;
-                var decode = false;
-                for (var j = i + 1; j <= end; ++j) {
-                    ch = str.charCodeAt(j);
+        if (ch === 64) {
+            var hostEndingCharacters = this._hostEndingCharacters;
+            var decode = false;
+            for (var j = i + 1; j <= end; ++j) {
+                ch = str.charCodeAt(j);
 
-                    if (ch === 64) {
-                        i = j;
-                    }
-                    else if (ch === 37) {
-                        decode = true;
-                    }
-                    else if (hostEndingCharacters[ch] === 1) {
-                        break;
-                    }
+                if (ch === 64) {
+                    i = j;
                 }
-                authParsed = true;
-                this._parseAuth(str, start, i - 1, decode);
-                hostNameStart = i + 1;
+                else if (ch === 37) {
+                    decode = true;
+                }
+                else if (hostEndingCharacters[ch] === 1) {
+                    break;
+                }
             }
-            else if (ch === 58) {
-                portLength = this._parsePort(str, i + 1, end);
+            this._parseAuth(str, start, i - 1, decode);
+            hostNameStart = i + 1;
+        }
+        else if (ch === 58) {
+            portLength = this._parsePort(str, i + 1, end);
+            hostNameEnd = i - 1;
+            break;
+        }
+        else if (ch < 97) {
+            if (ch === 46) {
+                charsAfterDot = -1;
+            }
+            else if (65 <= ch && ch <= 90) {
+                doLowerCase = true;
+            }
+            else if (!(ch === 45 || ch === 95 ||
+                (48 <= ch && ch <= 57))) {
                 hostNameEnd = i - 1;
                 break;
             }
-            else if (ch < 97) {
-                if (ch === 46) {
-                    if (lastCh === 46 || lastCh === -1) {
-                        throw new SyntaxError("");
-                    }
-                    charsAfterDot = -1;
-                }
-                else if (65 <= ch && ch <= 90) {
-                    doLowerCase = true;
-                }
-                else if (!(ch === 45 || ch === 95 ||
-                    (48 <= ch && ch <= 57))) {
-                    hostNameEnd = i - 1;
-                    break;
-                }
-            }
-            else if (ch >= 0x7B) {
-                if (ch <= 0x7E) {
-                    hostNameEnd = i - 1;
-                    break;
-                }
-                idna = true;
-            }
-            lastCh = ch;
-            charsAfterDot++;
         }
-
-        if (lastCh === 46) {
-            throw new SyntaxError("");
-        }
-
-        if (hostNameEnd + 1 !== start) {
-            if (hostNameEnd - hostNameStart > 256) {
-                throw new SyntaxError("");
+        else if (ch >= 0x7B) {
+            if (ch <= 0x7E) {
+                hostNameEnd = i - 1;
+                break;
             }
-            var hostname = str.slice(hostNameStart, hostNameEnd + 1);
-
-            if (doLowerCase) hostname = hostname.toLowerCase();
-            if (idna) hostname = this._hostIdna(hostname);
-            this.hostname = hostname;
-            this.host = this._port > 0 ? hostname + ":" + this._port : hostname;
+            idna = true;
         }
-
-        return hostNameEnd + 1 + portLength;
+        lastCh = ch;
+        charsAfterDot++;
     }
-    return start;
+
+    if (hostNameEnd + 1 !== start &&
+        hostNameEnd - hostNameStart <= 256) {
+        var hostname = str.slice(hostNameStart, hostNameEnd + 1);
+        if (doLowerCase) hostname = hostname.toLowerCase();
+        if (idna) hostname = this._hostIdna(hostname);
+        this.hostname = hostname;
+        this.host = this._port > 0 ? hostname + ":" + this._port : hostname;
+    }
+
+    return hostNameEnd + 1 + portLength;
+
 };
 
 Url.prototype._getComponentEscaped =

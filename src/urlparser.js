@@ -25,14 +25,12 @@ Url.prototype.parse = function Url$parse(str) {
     start = this._parseProtocol(str, start, end);
 
     if (start < 0) {
-        throw new SyntaxError("invalid protocol");
+        return;
     }
 
     if (this._protocol !== "javascript") {
         start = this._parseHost(str, start, end);
     }
-
-
     if (start < end) {
         var ch = str.charCodeAt(start);
 
@@ -46,7 +44,7 @@ Url.prototype.parse = function Url$parse(str) {
             this._parseHash(str, start + 1, end);
         }
         else {
-            throw new SyntaxError("");
+            this.pathname = str.slice(start, end + 1);
         }
     }
 };
@@ -81,14 +79,20 @@ Url.prototype.format = function Url$format() {
 
     var scheme = protocol + (slashes ? "://" : ":");
 
-    if (pathname !== "" && pathname.charCodeAt(0) !== SLASH)
+    if (slashes && pathname !== "" && pathname.charCodeAt(0) !== SLASH) {
         pathname = "/" + pathname;
+    }
+    else if (!slashes && pathname === "/") {
+        pathname = "";
+    }
     if (search !== "" && search.charCodeAt(0) !== QUESTION_MARK)
         search = "?" + search;
     if (hash !== "" && hash.charCodeAt(0) !== HASH)
         hash = "#" + hash;
 
     pathname = this._escapePathName(pathname);
+
+
     search = this._escapeSearch(search);
 
     return scheme + host + pathname + search + hash;
@@ -103,6 +107,10 @@ Url.prototype._queryToSearch = function Url$_queryToSearch() {
         return "?" + query;
     }
     //TODO Serialize querystring
+};
+
+Url.prototype._hostIdna = function Url$_hostIdna(hostname) {
+    return hostname;
 };
 
 Url.prototype._escapePathName = function Url$_escapePathName(pathname) {
@@ -122,10 +130,9 @@ Url.prototype._parseProtocol = function Url$_parseProtocol(str, start, end) {
         if (ch === COLON) {
             var protocol = str.slice(start, i);
             if (doLowerCase) protocol = protocol.toLowerCase();
-            if (!this._rvalidprotocol.test(protocol)) {
-                throw new SyntaxError("invalid protocol");
+            if (this._rvalidprotocol.test(protocol)) {
+                this._protocol = protocol;
             }
-            this._protocol = protocol;
             return i + 1;
         }
         else if (ch < FIRST_LOWER_CASE) {
@@ -144,23 +151,27 @@ Url.prototype._parseAuth = function Url$_parseAuth(str, start, end, decode) {
 };
 
 Url.prototype._parsePort = function Url$_parsePort(str, start, end) {
+    //Internal format is integer for more efficient parsing
+    //and for efficient trimming of leading zeros
     var port = 0;
+    //Distinguish between :0 and : (no port number at all)
+    var hadChars = false;
+
     for (var i = start; i <= end; ++i) {
         var ch = str.charCodeAt(i);
 
         if (FIRST_DECIMAL <= ch && ch <= LAST_DECIMAL) {
             port = (10 * port) + (ch - FIRST_DECIMAL);
+            hadChars = true;
         }
         else break;
 
     }
-
-    if (port === 0) {
-        throw new SyntaxError("");
+    if (port === 0 && !hadChars) {
+        return 0;
     }
 
     this._port = port;
-
     return i - start;
 };
 
@@ -168,96 +179,97 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
     if (str.charCodeAt(start) === SLASH &&
         str.charCodeAt(start + 1 === SLASH)) {
         start += 2;
+    }
 
-        var authParsed = false;
-        var doLowerCase = false;
-        var idna = false;
-        var hostNameStart = start;
-        var hostNameEnd = end;
-        var lastCh = -1;
-        var portLength = 0;
-        var charsAfterDot = 0;
+    var doLowerCase = false;
+    var idna = false;
+    var hostNameStart = start;
+    var hostNameEnd = end;
+    var lastCh = -1;
+    var portLength = 0;
+    var charsAfterDot = 0;
 
-        //TODO ip6 stuff
-        //TODO empty hostname stuff
-        loop: for (var i = start; i <= end; ++i) {
-            if (charsAfterDot > 63) {
-                throw new SyntaxError("");
-            }
-            var ch = str.charCodeAt(i);
+    //TODO ip6 stuff
+    loop: for (var i = start; i <= end; ++i) {
+        if (charsAfterDot > 62) {
+            this.hostname = this.host = str.slice(start, i);
+            return i;
+        }
+        var ch = str.charCodeAt(i);
 
-            if (ch === AT_SIGN) {
-                if (authParsed) throw new SyntaxError("");
-                var hostEndingCharacters = this._hostEndingCharacters;
-                var decode = false;
-                for (var j = i + 1; j <= end; ++j) {
-                    ch = str.charCodeAt(j);
+        if (ch === AT_SIGN) {
+            var hostEndingCharacters = this._hostEndingCharacters;
+            var decode = false;
+            for (var j = i + 1; j <= end; ++j) {
+                ch = str.charCodeAt(j);
 
-                    if (ch === AT_SIGN) {
-                        i = j;
-                    }
-                    else if (ch === PERCENT) {
-                        decode = true;
-                    }
-                    else if (hostEndingCharacters[ch] === 1) {
-                        break;
-                    }
+                if (ch === AT_SIGN) {
+                    i = j;
                 }
-                authParsed = true;
-                this._parseAuth(str, start, i - 1, decode);
-                hostNameStart = i + 1;
+                else if (ch === PERCENT) {
+                    decode = true;
+                }
+                else if (hostEndingCharacters[ch] === 1) {
+                    break;
+                }
             }
-            else if (ch === COLON) {
-                portLength = this._parsePort(str, i + 1, end);
+            this._parseAuth(str, start, i - 1, decode);
+            hostNameStart = i + 1;
+        }
+        else if (ch === COLON) {
+            portLength = this._parsePort(str, i + 1, end);
+            hostNameEnd = i - 1;
+            break;
+        }
+        else if (ch < FIRST_LOWER_CASE) {
+            if (ch === DOT) {
+                //Node.js ignores this error
+                /*
+                if (lastCh === DOT || lastCh === -1) {
+                    this.hostname = this.host = "";
+                    return start;
+                }
+                */
+                charsAfterDot = -1;
+            }
+            else if (FIRST_UPPER_CASE <= ch && ch <= LAST_UPPER_CASE) {
+                doLowerCase = true;
+            }
+            else if (!(ch === HYPHEN || ch === LO_DASH ||
+                (FIRST_DECIMAL <= ch && ch <= LAST_DECIMAL))) {
                 hostNameEnd = i - 1;
                 break;
             }
-            else if (ch < FIRST_LOWER_CASE) {
-                if (ch === DOT) {
-                    if (lastCh === DOT || lastCh === -1) {
-                        throw new SyntaxError("");
-                    }
-                    charsAfterDot = -1;
-                }
-                else if (FIRST_UPPER_CASE <= ch && ch <= LAST_UPPER_CASE) {
-                    doLowerCase = true;
-                }
-                else if (!(ch === HYPHEN || ch === LO_DASH ||
-                    (FIRST_DECIMAL <= ch && ch <= LAST_DECIMAL))) {
-                    hostNameEnd = i - 1;
-                    break;
-                }
-            }
-            else if (ch >= 0x7B) {
-                if (ch <= 0x7E) {
-                    hostNameEnd = i - 1;
-                    break;
-                }
-                idna = true;
-            }
-            lastCh = ch;
-            charsAfterDot++;
         }
-
-        if (lastCh === DOT) {
-            throw new SyntaxError("");
-        }
-
-        if (hostNameEnd + 1 !== start) {
-            if (hostNameEnd - hostNameStart > 256) {
-                throw new SyntaxError("");
+        else if (ch >= 0x7B) {
+            if (ch <= 0x7E) {
+                hostNameEnd = i - 1;
+                break;
             }
-            var hostname = str.slice(hostNameStart, hostNameEnd + 1);
-
-            if (doLowerCase) hostname = hostname.toLowerCase();
-            if (idna) hostname = this._hostIdna(hostname);
-            this.hostname = hostname;
-            this.host = this._port > 0 ? hostname + ":" + this._port : hostname;
+            idna = true;
         }
-
-        return hostNameEnd + 1 + portLength;
+        lastCh = ch;
+        charsAfterDot++;
     }
-    return start;
+
+    //Node.js ignores this error
+    /*
+    if (lastCh === DOT) {
+        hostNameEnd--;
+    }
+    */
+
+    if (hostNameEnd + 1 !== start &&
+        hostNameEnd - hostNameStart <= 256) {
+        var hostname = str.slice(hostNameStart, hostNameEnd + 1);
+        if (doLowerCase) hostname = hostname.toLowerCase();
+        if (idna) hostname = this._hostIdna(hostname);
+        this.hostname = hostname;
+        this.host = this._port > 0 ? hostname + ":" + this._port : hostname;
+    }
+
+    return hostNameEnd + 1 + portLength;
+
 };
 
 Url.prototype._getComponentEscaped =
