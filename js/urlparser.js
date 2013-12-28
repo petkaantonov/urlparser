@@ -45,19 +45,23 @@ Url.prototype.parse = function Url$parse(str) {
 
     start = this._parseProtocol(str, start, end);
 
+    var prependSlash = false;
+
     if (start < 0) {
         return;
     }
 
     if (this._protocol !== "javascript") {
-        start = this._parseHost(str, start, end);
+        var index = this._parseHost(str, start, end);
+        prependSlash = index !== start;
+        start = index;
     }
 
     if (start < end) {
-        var ch = str.charCodeAt(start, str.slice(start, end));
+        var ch = str.charCodeAt(start);
 
         if (ch === 47) {
-            this._parsePath(str, start + 1, end);
+            this._parsePath(str, start, end, false);
         }
         else if (ch === 63) {
             this._parseQuery(str, start + 1, end);
@@ -65,8 +69,11 @@ Url.prototype.parse = function Url$parse(str) {
         else if (ch === 35) {
             this._parseHash(str, start + 1, end);
         }
+        else if (this._protocol !== "javascript") {
+            this._parsePath(str, start, end, prependSlash);
+        }
         else {
-            this.pathname = str.slice(start, end + 1);
+            this.pathname = str.slice(start, end + 1 );
         }
     }
 };
@@ -102,6 +109,7 @@ Url.prototype.format = function Url$format() {
 
 
     if (protocol !== "") scheme = protocol + (slashes ? "://" : ":");
+    else if (slashes && auth !== "") scheme = "//";
 
     if (slashes && pathname !== "" && pathname.charCodeAt(0) !== 47) {
         pathname = "/" + pathname;
@@ -132,8 +140,16 @@ Url.prototype._queryToSearch = function Url$_queryToSearch() {
     }
 };
 
+var punycode = require("punycode");
 Url.prototype._hostIdna = function Url$_hostIdna(hostname) {
-    return hostname;
+    var domainArray = hostname.split(".");
+    var newOut = [];
+    for (var i = 0; i < domainArray.length; ++i) {
+        var s = domainArray[i];
+        newOut.push(s.match(/[^A-Za-z0-9_-]/) ?
+            "xn--" + punycode.encode(s) : s);
+    }
+    return newOut.join(".");
 };
 
 Url.prototype._escapePathName = function Url$_escapePathName(pathname) {
@@ -202,9 +218,13 @@ Url.prototype._parsePort = function Url$_parsePort(str, start, end) {
 Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
     if (str.charCodeAt(start) === 47 &&
         str.charCodeAt(start + 1) === 47) {
-        if (start === 0) return start;
-        start += 2;
         this.slashes = true;
+        if (start === 0) {
+            var containsAt = str.indexOf("@");
+            if (containsAt === -1)
+                return start;
+        }
+        start += 2;
     }
 
     var doLowerCase = false;
@@ -214,35 +234,38 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
     var lastCh = -1;
     var portLength = 0;
     var charsAfterDot = 0;
+    var hostEndingCharacters = this._hostEndingCharacters;
+    var decode = false;
 
-    loop: for (var i = start; i <= end; ++i) {
+    var j = -1;
+    for (var i = start; i <= end; ++i) {
+        var ch = str.charCodeAt(i);
+
+        if (ch === 64) {
+            j = i;
+        }
+        else if (ch === 37) {
+            decode = true;
+        }
+        else if (hostEndingCharacters[ch] === 1) {
+            break;
+        }
+    }
+
+    if (j > -1) {
+        this._parseAuth(str, start, j - 1, decode);
+        start = hostNameStart = j + 1;
+    }
+
+    for (var i = start; i <= end; ++i) {
         if (charsAfterDot > 62) {
             this.hostname = this.host = str.slice(start, i);
             return i;
         }
         var ch = str.charCodeAt(i);
 
-        if (ch === 64) {
-            var hostEndingCharacters = this._hostEndingCharacters;
-            var decode = false;
-            for (var j = i + 1; j <= end; ++j) {
-                ch = str.charCodeAt(j);
-
-                if (ch === 64) {
-                    i = j;
-                }
-                else if (ch === 37) {
-                    decode = true;
-                }
-                else if (hostEndingCharacters[ch] === 1) {
-                    break;
-                }
-            }
-            this._parseAuth(str, start, i - 1, decode);
-            hostNameStart = i + 1;
-        }
-        else if (ch === 58) {
-            portLength = this._parsePort(str, i + 1, end);
+        if (ch === 58) {
+            portLength = this._parsePort(str, i + 1, end) + 1;
             hostNameEnd = i - 1;
             break;
         }
@@ -279,6 +302,10 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
         this.host = this._port > 0 ? hostname + ":" + this._port : hostname;
     }
 
+    if (this._port === 8000) {
+        console.log(hostNameEnd + 1 +
+         portLength, str.slice(hostNameEnd + 1 + portLength));
+    }
     return hostNameEnd + 1 + portLength;
 
 };
@@ -303,7 +330,8 @@ function Url$_getComponentEscaped(str, start, end) {
     return ret;
 };
 
-Url.prototype._parsePath = function Url$_parsePath(str, start, end) {
+Url.prototype._parsePath =
+function Url$_parsePath(str, start, end, prependSlash) {
     var pathStart = start;
     var pathEnd = end;
     var escape = false;
@@ -333,12 +361,12 @@ Url.prototype._parsePath = function Url$_parsePath(str, start, end) {
 
     var path;
     if (escape) {
-        path = "/" + this._getComponentEscaped(str, pathStart, pathEnd);
+        path = this._getComponentEscaped(str, pathStart, pathEnd);
     }
     else {
-        path = "/" + str.slice(pathStart, pathEnd + 1);
+        path = str.slice(pathStart, pathEnd + 1);
     }
-    this.pathname = path;
+    this.pathname = prependSlash ? "/" + path : path;
 };
 
 Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
@@ -377,7 +405,7 @@ Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
 };
 
 Url.prototype._parseHash = function Url$_parseHash(str, start, end) {
-    if (start >= end) {
+    if (start > end) {
         this.hash = "";
         return;
     }
@@ -398,6 +426,9 @@ Object.defineProperty(Url.prototype, "port", {
 
 Object.defineProperty(Url.prototype, "path", {
     get: function() {
+        if (this.pathname === "/" && this.search !== "") {
+            return this.search;
+        }
         return this.pathname + this.search;
     },
     set: function() {
