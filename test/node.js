@@ -436,11 +436,11 @@ var parseTests = {
   },
 
   'http://www.Äffchen.com/' : {
-    'href': 'http://www.xn--ffchen-9ta.com/',
+    'href': 'http://www.xn--ffchen-vna.com/',
     'protocol': 'http:',
     'slashes': true,
-    'host': 'www.xn--ffchen-9ta.com',
-    'hostname': 'www.xn--ffchen-9ta.com',
+    'host': 'www.xn--ffchen-vna.com',
+    'hostname': 'www.xn--ffchen-vna.com',
     'pathname': '/',
     'path': '/'
   },
@@ -765,13 +765,11 @@ var parseTests = {
     slashes: true,
     auth: 'a\r" \t\n<\'b:b',
     host: 'c',
-    port: null,
     hostname: 'c',
-    hash: null,
     search: '?f',
     query: 'f',
-    pathname: '%0D%0Ad/e',
-    path: '%0D%0Ad/e?f',
+    pathname: '/%0D%0Ad/e',
+    path: '/%0D%0Ad/e?f',
     href: 'http://a%0D%22%20%09%0A%3C\'b:b@c/%0D%0Ad/e?f'
   }
 
@@ -798,4 +796,212 @@ describe("node.js parser tests", function() {
         });
     });
 })
+
+// some extra formatting tests, just to verify
+// that it'll format slightly wonky content to a valid url.
+var formatTests = {
+  'http://example.com?' : {
+    'href': 'http://example.com/?',
+    'protocol': 'http:',
+    'slashes': true,
+    'host': 'example.com',
+    'hostname': 'example.com',
+    'search': '?',
+    'query': {},
+    'pathname': '/'
+  },
+  'http://example.com?foo=bar#frag' : {
+    'href': 'http://example.com/?foo=bar#frag',
+    'protocol': 'http:',
+    'host': 'example.com',
+    'hostname': 'example.com',
+    'hash': '#frag',
+    'search': '?foo=bar',
+    'query': 'foo=bar',
+    'pathname': '/'
+  },
+  'http://example.com?foo=@bar#frag' : {
+    'href': 'http://example.com/?foo=@bar#frag',
+    'protocol': 'http:',
+    'host': 'example.com',
+    'hostname': 'example.com',
+    'hash': '#frag',
+    'search': '?foo=@bar',
+    'query': 'foo=@bar',
+    'pathname': '/'
+  },
+  'http://example.com?foo=/bar/#frag' : {
+    'href': 'http://example.com/?foo=/bar/#frag',
+    'protocol': 'http:',
+    'host': 'example.com',
+    'hostname': 'example.com',
+    'hash': '#frag',
+    'search': '?foo=/bar/',
+    'query': 'foo=/bar/',
+    'pathname': '/'
+  },
+  'http://example.com?foo=?bar/#frag' : {
+    'href': 'http://example.com/?foo=?bar/#frag',
+    'protocol': 'http:',
+    'host': 'example.com',
+    'hostname': 'example.com',
+    'hash': '#frag',
+    'search': '?foo=?bar/',
+    'query': 'foo=?bar/',
+    'pathname': '/'
+  },
+  'http://example.com#frag=?bar/#frag' : {
+    'href': 'http://example.com/#frag=?bar/#frag',
+    'protocol': 'http:',
+    'host': 'example.com',
+    'hostname': 'example.com',
+    'hash': '#frag=?bar/#frag',
+    'pathname': '/'
+  },
+  'http://google.com" onload="alert(42)/' : {
+    'href': 'http://google.com/%22%20onload=%22alert(42)/',
+    'protocol': 'http:',
+    'host': 'google.com',
+    'pathname': '/%22%20onload=%22alert(42)/'
+  },
+  'http://a.com/a/b/c?s#h' : {
+    'href': 'http://a.com/a/b/c?s#h',
+    'protocol': 'http',
+    'host': 'a.com',
+    'pathname': 'a/b/c',
+    'hash': 'h',
+    'search': 's'
+  },
+  'xmpp:isaacschlueter@jabber.org' : {
+    'href': 'xmpp:isaacschlueter@jabber.org',
+    'protocol': 'xmpp:',
+    'host': 'jabber.org',
+    'auth': 'isaacschlueter',
+    'hostname': 'jabber.org'
+  },
+  'http://atpass:foo%40bar@127.0.0.1/' : {
+    'href': 'http://atpass:foo%40bar@127.0.0.1/',
+    'auth': 'atpass:foo@bar',
+    'hostname': '127.0.0.1',
+    'protocol': 'http:',
+    'pathname': '/'
+  },
+  'http://atslash%2F%40:%2F%40@foo/' : {
+    'href': 'http://atslash%2F%40:%2F%40@foo/',
+    'auth': 'atslash/@:/@',
+    'hostname': 'foo',
+    'protocol': 'http:',
+    'pathname': '/'
+  },
+  'svn+ssh://foo/bar': {
+    'href': 'svn+ssh://foo/bar',
+    'hostname': 'foo',
+    'protocol': 'svn+ssh:',
+    'pathname': '/bar',
+    'slashes': true
+  },
+  'dash-test://foo/bar': {
+    'href': 'dash-test://foo/bar',
+    'hostname': 'foo',
+    'protocol': 'dash-test:',
+    'pathname': '/bar',
+    'slashes': true
+  },
+  'dash-test:foo/bar': {
+    'href': 'dash-test:foo/bar',
+    'hostname': 'foo',
+    'protocol': 'dash-test:',
+    'pathname': '/bar'
+  },
+  'dot.test://foo/bar': {
+    'href': 'dot.test://foo/bar',
+    'hostname': 'foo',
+    'protocol': 'dot.test:',
+    'pathname': '/bar',
+    'slashes': true
+  },
+  'dot.test:foo/bar': {
+    'href': 'dot.test:foo/bar',
+    'hostname': 'foo',
+    'protocol': 'dot.test:',
+    'pathname': '/bar'
+  },
+  // ipv6 support
+  'coap:u:p@[::1]:61616/.well-known/r?n=Temperature': {
+    'href': 'coap:u:p@[::1]:61616/.well-known/r?n=Temperature',
+    'protocol': 'coap:',
+    'auth': 'u:p',
+    'hostname': '::1',
+    'port': '61616',
+    'pathname': '/.well-known/r',
+    'search': 'n=Temperature'
+  },
+  'coap:[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:61616/s/stopButton': {
+    'href': 'coap:[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:61616/s/stopButton',
+    'protocol': 'coap',
+    'host': '[fedc:ba98:7654:3210:fedc:ba98:7654:3210]:61616',
+    'pathname': '/s/stopButton'
+  },
+
+  // encode context-specific delimiters in path and query, but do not touch
+  // other non-delimiter chars like `%`.
+  // <https://github.com/joyent/node/issues/4082>
+
+  // `#`,`?` in path
+  '/path/to/%%23%3F+=&.txt?foo=theA1#bar' : {
+    href : '/path/to/%%23%3F+=&.txt?foo=theA1#bar',
+    pathname: '/path/to/%#?+=&.txt',
+    query: {
+      foo: 'theA1'
+    },
+    hash: "#bar"
+  },
+
+  // `#`,`?` in path + `#` in query
+  '/path/to/%%23%3F+=&.txt?foo=the%231#bar' : {
+    href : '/path/to/%%23%3F+=&.txt?foo=the%231#bar',
+    pathname: '/path/to/%#?+=&.txt',
+    query: {
+      foo: 'the#1'
+    },
+    hash: "#bar"
+  },
+
+  // `?` and `#` in path and search
+  'http://ex.com/foo%3F100%m%23r?abc=the%231?&foo=bar#frag': {
+    href: 'http://ex.com/foo%3F100%m%23r?abc=the%231?&foo=bar#frag',
+    protocol: 'http:',
+    hostname: 'ex.com',
+    hash: '#frag',
+    search: '?abc=the#1?&foo=bar',
+    pathname: '/foo?100%m#r',
+  },
+
+  // `?` and `#` in search only
+  'http://ex.com/fooA100%mBr?abc=the%231?&foo=bar#frag': {
+    href: 'http://ex.com/fooA100%mBr?abc=the%231?&foo=bar#frag',
+    protocol: 'http:',
+    hostname: 'ex.com',
+    hash: '#frag',
+    search: '?abc=the#1?&foo=bar',
+    pathname: '/fooA100%mBr',
+  }
+};
+
+function ftest(u) {
+    return function () {
+        var expect = formatTests[u].href;
+        delete formatTests[u].href;
+        var actual = url.format(u);
+        var actualObj = url.format(formatTests[u]);
+        assert.equal(actual, expect);
+        assert.equal(actualObj, expect);
+    }
+}
+
+describe("node.js format tests", function(){
+    for (var u in formatTests) {
+        specify(u, ftest(u));
+    }
+});
 

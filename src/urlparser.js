@@ -3,6 +3,7 @@ function Url() {
     this._protocol = "";
     this._href = "";
     this._port = -1;
+    this._prependSlash = false;
 
     this.auth = "";
     this.slashes = false;
@@ -10,7 +11,6 @@ function Url() {
     this.hostname = "";
     this.hash = "";
     this.search = "";
-    this.query = null;
     this.pathname = "/";
 }
 
@@ -24,32 +24,30 @@ Url.prototype.parse = function Url$parse(str) {
 
     start = this._parseProtocol(str, start, end);
 
-    var prependSlash = false;
-
-    if (start < 0) {
-        return;
-    }
 
     if (this._protocol !== "javascript") {
-        var index = this._parseHost(str, start, end);
-        prependSlash = index !== start;
-        start = index;
+        start = this._parseHost(str, start, end);
     }
 
-    if (start < end) {
+    if (start <= end) {
         var ch = str.charCodeAt(start);
 
         if (ch === SLASH) {
-            this._parsePath(str, start, end, false);
+            this._parsePath(str, start, end);
         }
-        else if (ch === QUESTION_MARK) {
-            this._parseQuery(str, start + 1, end);
-        }
-        else if (ch === HASH) {
-            this._parseHash(str, start + 1, end);
+        else if (ch === QUESTION_MARK || ch === HASH) {
+            if (this.hostname === "" || !this._slashProtocols[this._protocol]) {
+                this.pathname = "";
+            }
+            if (ch === HASH) {
+                this._parseHash(str, start, end);
+            }
+            else {
+                this._parseQuery(str, start, end);
+            }
         }
         else if (this._protocol !== "javascript") {
-            this._parsePath(str, start, end, prependSlash);
+            this._parsePath(str, start, end);
         }
         else {
             this.pathname = str.slice(start, end + 1 );
@@ -57,54 +55,68 @@ Url.prototype.parse = function Url$parse(str) {
     }
 };
 
+//TODO replace with querystringparser
+var querystring = require("querystring");
 Url.prototype.format = function Url$format() {
-    var auth = this.auth;
+    var auth = this.auth || "";
 
-    if (auth !== "") {
+    if (auth) {
         auth = encodeURIComponent(auth);
         auth = auth.replace(/%3A/i, ":");
         auth += "@";
     }
 
-    var protocol = this._protocol;
-    var pathname = this.pathname;
-    var hash = this.hash;
-    var search = this.search !== "" ? this.search : this._queryToSearch();
-    var hostname = this.hostname;
-    var port = this._port;
+    var protocol = this.protocol || "";
+    var pathname = this.pathname || "";
+    var hash = this.hash || "";
+    var search = this.search || "";
+    var query = "";
+    var hostname = this.hostname || "";
+    var port = this.port || "";
     var host = false;
     var scheme = "";
 
-    if (this.host !== "") {
+    if (this.query && typeof this.query === "object") {
+        query = querystring.stringify(this.query);
+    }
+
+    if (!search) {
+        search = query ? "?" + query : "";
+    }
+
+    if (protocol && protocol.charCodeAt(protocol.length - 1) !== COLON)
+        protocol += ":";
+
+    if (this.host) {
         host = auth + this.host;
     }
-    else if (hostname !== "") {
-        host = auth + hostname + (port >= 0 ? ":" + port : "");
+    else if (hostname) {
+        var ip6 = hostname.indexOf(":") > -1;
+        if (ip6) hostname = "[" + hostname + "]";
+        host = auth + hostname + (port ? ":" + port : "");
     }
 
     var slashes = this.slashes ||
-        ((protocol === "" ||
-        this._slashProtocols[protocol]) && host !== false);
+        ((!protocol ||
+        slashProtocols[protocol]) && host !== false);
 
 
-    if (protocol !== "") scheme = protocol + (slashes ? "://" : ":");
-    else if (slashes && auth !== "") scheme = "//";
+    if (protocol) scheme = protocol + (slashes ? "//" : "");
+    else if (slashes && auth) scheme = "//";
 
-    if (slashes && pathname !== "" && pathname.charCodeAt(0) !== SLASH) {
+    if (slashes && pathname && pathname.charCodeAt(0) !== SLASH) {
         pathname = "/" + pathname;
     }
     else if (!slashes && pathname === "/") {
         pathname = "";
     }
-    if (search !== "" && search.charCodeAt(0) !== QUESTION_MARK)
+    if (search && search.charCodeAt(0) !== QUESTION_MARK)
         search = "?" + search;
-    if (hash !== "" && hash.charCodeAt(0) !== HASH)
+    if (hash && hash.charCodeAt(0) !== HASH)
         hash = "#" + hash;
 
-    pathname = this._escapePathName(pathname);
-
-
-    search = this._escapeSearch(search);
+    pathname = escapePathName(pathname);
+    search = escapeSearch(search);
 
     return scheme + (host === false ? "" : host) + pathname + search + hash;
 };
@@ -136,12 +148,18 @@ Url.prototype._hostIdna = function Url$_hostIdna(hostname) {
     return newOut.join(".");
 };
 
-Url.prototype._escapePathName = function Url$_escapePathName(pathname) {
-    return pathname;
+var escapePathName = Url.prototype._escapePathName =
+function Url$_escapePathName(pathname) {
+    if (!containsCharacter2(pathname, HASH, QUESTION_MARK)) return pathname;
+    //Avoid closure creation to keep this inlinable
+    return _escapePath(pathname);
 };
 
-Url.prototype._escapeSearch = function Url$_escapeSearch(search) {
-    return search;
+var escapeSearch = Url.prototype._escapeSearch =
+function Url$_escapeSearch(search) {
+    if (!containsCharacter2(search, HASH, -1)) return search;
+    //Avoid closure creation to keep this inlinable
+    return _escapeSearch(search);
 };
 
 Url.prototype._parseProtocol = function Url$_parseProtocol(str, start, end) {
@@ -162,11 +180,11 @@ Url.prototype._parseProtocol = function Url$_parseProtocol(str, start, end) {
                 doLowerCase = true;
         }
         else {
-            return i;
+            return start;
         }
 
     }
-    return -1;
+    return start;
 };
 
 Url.prototype._parseAuth = function Url$_parseAuth(str, start, end, decode) {
@@ -213,6 +231,9 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
         }
         start += 2;
     }
+    else if (this._protocol === "") {
+        return start;
+    }
 
     var doLowerCase = false;
     var idna = false;
@@ -244,7 +265,25 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
         start = hostNameStart = j + 1;
     }
 
-    //TODO ip6 stuff
+    if (str.charCodeAt(start) === LEFT_BRACKET) {
+        for (var i = start + 1; i <= end; ++i) {
+            var ch = str.charCodeAt(i);
+
+            if (ch === RIGHT_BRACKET) {
+                if (str.charCodeAt(i + 1) === COLON) {
+                    portLength = this._parsePort(str, i + 2, end) + 1;
+                }
+                var hostname = str.slice(start + 1, i).toLowerCase();
+                this.hostname = hostname;
+                this.host = this._port > 0
+                    ? "[" + hostname + "]:" + this._port
+                    : "[" + hostname + "]";
+                return i + portLength + 1;
+            }
+        }
+        return start;
+    }
+
     for (var i = start; i <= end; ++i) {
         if (charsAfterDot > 62) {
             this.hostname = this.host = str.slice(start, i);
@@ -273,12 +312,16 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
             }
             else if (!(ch === HYPHEN || ch === LO_DASH ||
                 (FIRST_DECIMAL <= ch && ch <= LAST_DECIMAL))) {
+                if (hostEndingCharacters[ch] === 0) {
+                    this._prependSlash = true;
+                }
                 hostNameEnd = i - 1;
                 break;
             }
         }
         else if (ch >= 0x7B) {
             if (ch <= 0x7E) {
+                this._prependSlash = true;
                 hostNameEnd = i - 1;
                 break;
             }
@@ -304,10 +347,6 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
         this.host = this._port > 0 ? hostname + ":" + this._port : hostname;
     }
 
-    if (this._port === 8000) {
-        console.log(hostNameEnd + 1 +
-         portLength, str.slice(hostNameEnd + 1 + portLength));
-    }
     return hostNameEnd + 1 + portLength;
 
 };
@@ -333,7 +372,7 @@ function Url$_getComponentEscaped(str, start, end) {
 };
 
 Url.prototype._parsePath =
-function Url$_parsePath(str, start, end, prependSlash) {
+function Url$_parsePath(str, start, end) {
     var pathStart = start;
     var pathEnd = end;
     var escape = false;
@@ -342,12 +381,12 @@ function Url$_parsePath(str, start, end, prependSlash) {
     for (var i = start; i <= end; ++i) {
         var ch = str.charCodeAt(i);
         if (ch === HASH) {
-            this._parseHash(str, i + 1, end);
+            this._parseHash(str, i, end);
             pathEnd = i - 1;
             break;
         }
         else if (ch === QUESTION_MARK) {
-            this._parseQuery(str, i + 1, end);
+            this._parseQuery(str, i, end);
             pathEnd = i - 1;
             break;
         }
@@ -368,7 +407,7 @@ function Url$_parsePath(str, start, end, prependSlash) {
     else {
         path = str.slice(pathStart, pathEnd + 1);
     }
-    this.pathname = prependSlash ? "/" + path : path;
+    this.pathname = this._prependSlash ? "/" + path : path;
 };
 
 Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
@@ -381,7 +420,7 @@ Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
         var ch = str.charCodeAt(i);
 
         if (ch === HASH) {
-            this._parseHash(str, i + 1, end);
+            this._parseHash(str, i, end);
             queryEnd = i - 1;
             break;
         }
@@ -402,8 +441,7 @@ Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
     else {
         query = str.slice(queryStart, queryEnd + 1);
     }
-    this.search = "?" + query;
-    this.query = query;
+    this.search = query;
 };
 
 Url.prototype._parseHash = function Url$_parseHash(str, start, end) {
@@ -411,7 +449,7 @@ Url.prototype._parseHash = function Url$_parseHash(str, start, end) {
         this.hash = "";
         return;
     }
-    this.hash = "#" + this._getComponentEscaped(str, start, end);
+    this.hash = this._getComponentEscaped(str, start, end);
 };
 
 Object.defineProperty(Url.prototype, "port", {
@@ -426,11 +464,17 @@ Object.defineProperty(Url.prototype, "port", {
     }
 });
 
+Object.defineProperty(Url.prototype, "query", {
+    get: function() {
+        return this.search !== "" ? this.search.slice(1) : "";
+    },
+    set: function() {
+
+    }
+});
+
 Object.defineProperty(Url.prototype, "path", {
     get: function() {
-        if (this.pathname === "/" && this.search !== "") {
-            return this.search;
-        }
         return this.pathname + this.search;
     },
     set: function() {
@@ -466,6 +510,35 @@ Url.parse = function Url$Parse(str) {
     return ret;
 };
 
+Url.format = function Url$Format(obj) {
+    if (typeof obj === "string") {
+        obj = Url.parse(obj);
+    }
+    if (!(obj instanceof Url)) {
+        return Url.prototype.format.call(obj);
+    }
+    return obj.format();
+};
+
+function _escapePath(pathname) {
+    return pathname.replace(/[?#]/g, function(match) {
+        return encodeURIComponent(match);
+    });
+}
+
+function _escapeSearch(search) {
+    return search.replace(/#/g, function(match) {
+        return encodeURIComponent(match);
+    });
+}
+
+function containsCharacter2(string, char1, char2) {
+    for (var i = 0, len = string.length; i < len; ++i) {
+        var ch = string.charCodeAt(i);
+        if (ch === char1 || ch === char2) return true;
+    }
+    return false;
+}
 
 function makeAsciiTable(spec) {
     var ret = new Uint8Array(128);
@@ -504,13 +577,23 @@ for (var i = 0, len = autoEscape.length; i < len; ++i) {
 }
 
 
-Url.prototype._slashProtocols = {
+var slashProtocols = Url.prototype._slashProtocols = {
     http: true,
     https: true,
     gopher: true,
     file: true,
-    ftp: true
+    ftp: true,
+
+    "http:": true,
+    "https:": true,
+    "gopher:": true,
+    "file:": true,
+    "ftp:": true
 };
+
+//Optimize back from normalized object caused by non-identifier keys
+function f(){}
+f.prototype = slashProtocols;
 
 Url.prototype._protocolCharacters = makeAsciiTable([
     [FIRST_LOWER_CASE, LAST_LOWER_CASE],

@@ -22,32 +22,25 @@ describe("basic tests", function() {
         a = Url.parse("http://www.google.com/?");
         assert(a.host === "www.google.com");
         assert(a.protocol === "http:");
-        assert(a.path === "/");
+        assert(a.path === "/?");
         assert(a.pathname === "/");
-        assert(a.search === "");
+        assert(a.search === "?");
 
         a = Url.parse("http://www.google.com?");
         assert(a.host === "www.google.com");
         assert(a.protocol === "http:");
-        assert(a.path === "/");
+        assert(a.path === "/?");
         assert(a.pathname === "/");
-        assert(a.search === "");
+        assert(a.search === "?");
+
 
         a = Url.parse("http://www.google.com?#");
         assert(a.host === "www.google.com");
         assert(a.protocol === "http:");
-        assert(a.path === "/");
+        assert(a.path === "/?");
         assert(a.pathname === "/");
-        assert(a.search === "");
-        assert(a.hash === "");
-
-        a = Url.parse("http://www.google.com/?#");
-        assert(a.host === "www.google.com");
-        assert(a.protocol === "http:");
-        assert(a.path === "/");
-        assert(a.pathname === "/");
-        assert(a.search === "");
-        assert(a.hash === "");
+        assert(a.search === "?");
+        assert(a.hash === "#");
 
         a = Url.parse("http://www.google.com/?a#");
         assert(a.host === "www.google.com");
@@ -55,7 +48,7 @@ describe("basic tests", function() {
         assert(a.path === "/?a");
         assert(a.pathname === "/");
         assert(a.search === "?a");
-        assert(a.hash === "");
+        assert(a.hash === "#");
 
 
         a = Url.parse("http://www.google.com/?querystring");
