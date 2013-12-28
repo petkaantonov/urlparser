@@ -52,7 +52,7 @@ describe("basic tests", function() {
         a = Url.parse("http://www.google.com/?a#");
         assert(a.host === "www.google.com");
         assert(a.protocol === "http:");
-        assert(a.path === "/");
+        assert(a.path === "/?a");
         assert(a.pathname === "/");
         assert(a.search === "?a");
         assert(a.hash === "");
@@ -61,7 +61,7 @@ describe("basic tests", function() {
         a = Url.parse("http://www.google.com/?querystring");
         assert(a.host === "www.google.com");
         assert(a.protocol === "http:");
-        assert(a.path === "/");
+        assert(a.path === "/?querystring");
         assert(a.pathname === "/");
         assert(a.search === "?querystring");
         assert(a.hash === "");
@@ -77,7 +77,7 @@ describe("basic tests", function() {
         a = Url.parse("http://www.google.com/?query#string");
         assert(a.host === "www.google.com");
         assert(a.protocol === "http:");
-        assert(a.path === "/");
+        assert(a.path === "/?query");
         assert(a.pathname === "/");
         assert(a.search === "?query");
         assert(a.hash === "#string");
@@ -115,5 +115,39 @@ describe("basic tests", function() {
         assert(a.search === "?@c");
         assert(a.auth === "a");
     });
+
+    specify("autoescape some chars in the result", function() {
+        a = Url.parse("http://www.google.com#{}");
+        assert(a.hash === "#%7B%7D");
+
+        a = Url.parse("http://www.google.com?{}");
+        assert(a.search === "?%7B%7D");
+
+        a = Url.parse("http://www.google.com/{}");
+        assert(a.pathname === "/%7B%7D");
+
+        a = Url.parse("http://www.google.com/{}?{}#{}");
+        assert(a.hash === "#%7B%7D");
+        assert(a.search === "?%7B%7D");
+        assert(a.pathname === "/%7B%7D");
+        assert(a.href === "http://www.google.com/%7B%7D?%7B%7D#%7B%7D");
+
+        a = Url.parse("http://www.google.com#a{b}{}");
+        assert(a.hash === "#a%7Bb%7D%7B%7D");
+
+        a = Url.parse("http://www.google.com?a{b}{}");
+        assert(a.search === "?a%7Bb%7D%7B%7D");
+
+        a = Url.parse("http://www.google.com/a{b}{}");
+        assert(a.pathname === "/a%7Bb%7D%7B%7D");
+
+        a = Url.parse("http://www.google.com/a{b}{}?a{b}{}#a{b}{}");
+        assert(a.hash === "#a%7Bb%7D%7B%7D");
+        assert(a.pathname === "/a%7Bb%7D%7B%7D");
+        assert(a.search === "?a%7Bb%7D%7B%7D");
+        assert(a.href === "http://www.google.com/a%7Bb%7D%7B%7D?a%7Bb%7D%7B%7D#a%7Bb%7D%7B%7D");
+    });
+
+    //Escape for hash, qs, path: also boundaries
 });
 

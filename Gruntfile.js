@@ -35,7 +35,8 @@ module.exports = function( grunt ) {
             "console": false,
             "require": false,
             "module": false,
-            "define": false
+            "define": false,
+            "escape": false
         };
         while( ( m = rconstantname.exec( contents ) ) ) {
             globals[m[1]] = false;

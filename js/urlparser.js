@@ -20,46 +20,118 @@
  * THE SOFTWARE.
  */
 "use strict";
-
-function makeAsciiArray(spec) {
-    var ret = new Uint8Array(128);
-    spec.forEach(function(item){
-        if (typeof item === "number") {
-            ret[item] = 1;
-        }
-        else {
-            var start = item[0];
-            var end = item[1];
-            for (var j = start; j <= end; ++j) {
-                ret[j] = 1;
-            }
-        }
-    });
-
-    return ret;
-}
-
 function Url() {
     this._protocol = "";
     this._href = "";
     this._port = -1;
 
-    this.slashes = "";
     this.auth = "";
+    this.slashes = false;
     this.host = "";
     this.hostname = "";
     this.hash = "";
     this.search = "";
     this.query = null;
     this.pathname = "/";
-    this.path = "/";
 }
 
-Url.prototype._rvalidprotocol = /^[a-z.+-]+$/;
+Url.prototype.parse = function Url$parse(str) {
+    if (typeof str !== "string") throw new TypeError("");
+    var start = 0;
+    var end = str.length - 1;
 
-Url.prototype._hostEndingCharacters = makeAsciiArray([
-    35, 63, 47
-]);
+    while (str.charCodeAt(start) <= 32) start++;
+    while (str.charCodeAt(end) <= 32) end--;
+
+    start = this._parseProtocol(str, start, end);
+
+    if (start < 0) {
+        throw new SyntaxError("invalid protocol");
+    }
+
+    if (this._protocol !== "javascript") {
+        start = this._parseHost(str, start, end);
+    }
+
+
+    if (start < end) {
+        var ch = str.charCodeAt(start);
+
+        if (ch === 47) {
+            this._parsePath(str, start + 1, end);
+        }
+        else if (ch === 63) {
+            this._parseQuery(str, start + 1, end);
+        }
+        else if (ch === 35) {
+            this._parseHash(str, start + 1, end);
+        }
+        else {
+            throw new SyntaxError("");
+        }
+    }
+};
+
+Url.prototype.format = function Url$format() {
+    var auth = this.auth;
+
+    if (auth !== "") {
+        auth = encodeURIComponent(auth);
+        auth = auth.replace(/%3A/i, ":");
+        auth += "@";
+    }
+
+    var protocol = this._protocol;
+    var pathname = this.pathname;
+    var hash = this.hash;
+    var search = this.search !== "" ? this.search : this._queryToSearch();
+    var hostname = this.hostname;
+    var port = this._port;
+    var host = "";
+
+    if (this.host !== "") {
+        host = auth + this.host;
+    }
+    else if (hostname !== "") {
+        host = auth + hostname + (port >= 0 ? ":" + port : "");
+    }
+
+    var slashes = this.slashes ||
+        protocol === "" ||
+        this._slashProtocols[protocol];
+
+    var scheme = protocol + (slashes ? "://" : ":");
+
+    if (pathname !== "" && pathname.charCodeAt(0) !== 47)
+        pathname = "/" + pathname;
+    if (search !== "" && search.charCodeAt(0) !== 63)
+        search = "?" + search;
+    if (hash !== "" && hash.charCodeAt(0) !== 35)
+        hash = "#" + hash;
+
+    pathname = this._escapePathName(pathname);
+    search = this._escapeSearch(search);
+
+    return scheme + host + pathname + search + hash;
+};
+
+Url.prototype._queryToSearch = function Url$_queryToSearch() {
+    var query = this.query;
+
+    if (query === null || query === "") return "";
+
+    if (typeof query === "string") {
+        return "?" + query;
+    }
+};
+
+Url.prototype._escapePathName = function Url$_escapePathName(pathname) {
+    return pathname;
+};
+
+Url.prototype._escapeSearch = function Url$_escapeSearch(search) {
+    return search;
+};
 
 Url.prototype._parseProtocol = function Url$_parseProtocol(str, start, end) {
     var doLowerCase = false;
@@ -185,6 +257,10 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
             charsAfterDot++;
         }
 
+        if (lastCh === 46) {
+            throw new SyntaxError("");
+        }
+
         if (hostNameEnd + 1 !== start) {
             if (hostNameEnd - hostNameStart > 256) {
                 throw new SyntaxError("");
@@ -202,10 +278,31 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
     return start;
 };
 
+Url.prototype._getComponentEscaped =
+function Url$_getComponentEscaped(str, start, end) {
+    var cur = start;
+    var i = start;
+    var ret = "";
+    var autoEscapeMap = this._autoEscapeMap;
+    for (; i <= end; ++i) {
+        var ch = str.charCodeAt(i);
+        var escaped = autoEscapeMap[ch];
+
+        if (escaped !== "") {
+            if (cur < i) ret += str.slice(cur, i);
+            ret += escaped;
+            cur = i + 1;
+        }
+    }
+    if (cur < i + 1) ret += str.slice(cur, i);
+    return ret;
+};
+
 Url.prototype._parsePath = function Url$_parsePath(str, start, end) {
     var pathStart = start;
     var pathEnd = end;
-
+    var escape = false;
+    var autoEscapeCharacters = this._autoEscapeCharacters;
 
     for (var i = start; i <= end; ++i) {
         var ch = str.charCodeAt(i);
@@ -219,21 +316,31 @@ Url.prototype._parsePath = function Url$_parsePath(str, start, end) {
             pathEnd = i - 1;
             break;
         }
+        else if (!escape && autoEscapeCharacters[ch] === 1) {
+            escape = true;
+        }
     }
 
     if (pathStart > pathEnd) {
-        this.path = this.pathname = "/";
+        this.pathname = "/";
         return;
     }
-    var path = "/" + str.slice(pathStart, pathEnd + 1);
 
+    var path;
+    if (escape) {
+        path = "/" + this._getComponentEscaped(str, pathStart, pathEnd);
+    }
+    else {
+        path = "/" + str.slice(pathStart, pathEnd + 1);
+    }
     this.pathname = path;
-    this.path = path + this.search;
 };
 
 Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
     var queryStart = start;
     var queryEnd = end;
+    var escape = false;
+    var autoEscapeCharacters = this._autoEscapeCharacters;
 
     for (var i = start; i <= end; ++i) {
         var ch = str.charCodeAt(i);
@@ -243,6 +350,9 @@ Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
             queryEnd = i - 1;
             break;
         }
+        else if (!escape && autoEscapeCharacters[ch] === 1) {
+            escape = true;
+        }
     }
 
     if (queryStart > queryEnd) {
@@ -250,11 +360,15 @@ Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
         return;
     }
 
-    var query = str.slice(queryStart, queryEnd + 1);
-
+    var query;
+    if (escape) {
+        query = this._getComponentEscaped(str, queryStart, queryEnd);
+    }
+    else {
+        query = str.slice(queryStart, queryEnd + 1);
+    }
     this.search = "?" + query;
     this.query = query;
-    this.path = this.pathname + this.search;
 };
 
 Url.prototype._parseHash = function Url$_parseHash(str, start, end) {
@@ -262,45 +376,7 @@ Url.prototype._parseHash = function Url$_parseHash(str, start, end) {
         this.hash = "";
         return;
     }
-    this.hash = "#" + str.slice(start, end + 1);
-};
-
-Url.prototype.parse = function Url$parse(str) {
-    if (typeof str !== "string") throw new TypeError("");
-    var start = 0;
-    var end = str.length - 1;
-
-    while (str.charCodeAt(start) <= 32) start++;
-    while (str.charCodeAt(end) <= 32) end--;
-
-    start = this._parseProtocol(str, start, end);
-
-    if (start < 0) {
-        throw new SyntaxError("invalid protocol");
-    }
-
-    if (this._protocol !== "javascript") {
-        start = this._parseHost(str, start, end);
-    }
-
-
-    if (start < end) {
-        var ch = str.charCodeAt(start);
-
-        if (ch === 47) {
-            this._parsePath(str, start + 1, end);
-        }
-        else if (ch === 63) {
-            this._parseQuery(str, start + 1, end);
-        }
-        else if (ch === 35) {
-            this._parseHash(str, start + 1, end);
-        }
-        else {
-            throw new SyntaxError("");
-        }
-    }
-
+    this.hash = "#" + this._getComponentEscaped(str, start, end);
 };
 
 Object.defineProperty(Url.prototype, "port", {
@@ -315,6 +391,15 @@ Object.defineProperty(Url.prototype, "port", {
     }
 });
 
+Object.defineProperty(Url.prototype, "path", {
+    get: function() {
+        return this.pathname + this.search;
+    },
+    set: function() {
+
+    }
+});
+
 Object.defineProperty(Url.prototype, "protocol", {
     get: function() {
         return this._protocol + ":";
@@ -326,10 +411,13 @@ Object.defineProperty(Url.prototype, "protocol", {
 
 Object.defineProperty(Url.prototype, "href", {
     get: function() {
-        return this._href;
+        var href = this._href;
+        if (href === "") {
+            href = this._href = this.format();
+        }
+        return href;
     },
-    set: function(v) {
-        this._href = v;
+    set: function() {
     }
 });
 
@@ -338,5 +426,65 @@ Url.parse = function Url$Parse(str) {
     ret.parse(str);
     return ret;
 };
+
+
+function makeAsciiTable(spec) {
+    var ret = new Uint8Array(128);
+    spec.forEach(function(item){
+        if (typeof item === "number") {
+            ret[item] = 1;
+        }
+        else {
+            var start = item[0];
+            var end = item[1];
+            for (var j = start; j <= end; ++j) {
+                ret[j] = 1;
+            }
+        }
+    });
+
+    return ret;
+}
+
+var autoEscape = ["<", ">", "\"", "`", " ", "\r", "\n",
+    "\t", "{", "}", "|", "\\", "^", "`", "'"];
+
+var autoEscapeMap = new Array(128);
+
+for (var i = 0, len = autoEscapeMap.length; i < len; ++i) {
+    autoEscapeMap[i] = "";
+}
+
+for (var i = 0, len = autoEscape.length; i < len; ++i) {
+    var c = autoEscape[i];
+    var esc = encodeURIComponent(c);
+    if (esc === c) {
+        esc = escape(c);
+    }
+    autoEscapeMap[c.charCodeAt(0)] = esc;
+}
+
+
+Url.prototype._slashProtocols = {
+    http: true,
+    https: true,
+    gopher: true,
+    file: true,
+    ftp: true
+};
+
+Url.prototype._rvalidprotocol = /^[a-z.+-]+$/;
+
+Url.prototype._hostEndingCharacters = makeAsciiTable([
+    35, 63, 47
+]);
+
+Url.prototype._autoEscapeCharacters = makeAsciiTable(
+    autoEscape.map(function(v) {
+        return v.charCodeAt(0);
+    })
+);
+
+Url.prototype._autoEscapeMap = autoEscapeMap;
 
 module.exports = Url;
