@@ -1,9 +1,12 @@
 "use strict";
 function Url() {
+    //For more efficient internal representation and laziness.
+    //The non-underscore versions of these properties are accessor functions
+    //defined on the prototype.
     this._protocol = "";
     this._href = "";
     this._port = -1;
-    this._prependSlash = false;
+    this._query = null;
 
     this.auth = "";
     this.slashes = false;
@@ -11,22 +14,30 @@ function Url() {
     this.hostname = "";
     this.hash = "";
     this.search = "";
-    this.pathname = "/";
+    this.pathname = "";
+
+    this._prependSlash = false;
 }
 
-Url.prototype.parse = function Url$parse(str) {
-    if (typeof str !== "string") throw new TypeError("");
+var querystring = require("querystring");
+Url.prototype.parse =
+function Url$parse(str, parseQueryString, hostDenotesSlash) {
+    if (typeof str !== "string") {
+        throw new TypeError("Parameter 'url' must be a string, not " +
+            typeof str);
+    }
     var start = 0;
     var end = str.length - 1;
 
+    //Trim leading and trailing ws
     while (str.charCodeAt(start) <= SPACE) start++;
     while (str.charCodeAt(end) <= SPACE) end--;
 
     start = this._parseProtocol(str, start, end);
 
-
+    //Javascript doesn't have host
     if (this._protocol !== "javascript") {
-        start = this._parseHost(str, start, end);
+        start = this._parseHost(str, start, end, hostDenotesSlash);
     }
 
     if (start <= end) {
@@ -35,28 +46,39 @@ Url.prototype.parse = function Url$parse(str) {
         if (ch === SLASH) {
             this._parsePath(str, start, end);
         }
-        else if (ch === QUESTION_MARK || ch === HASH) {
-            if (this.hostname === "" || !this._slashProtocols[this._protocol]) {
-                this.pathname = "";
-            }
-            if (ch === HASH) {
-                this._parseHash(str, start, end);
-            }
-            else {
-                this._parseQuery(str, start, end);
-            }
+        else if (ch === QUESTION_MARK) {
+            this._parseQuery(str, start, end);
+        }
+        else if (ch === HASH) {
+            this._parseHash(str, start, end);
         }
         else if (this._protocol !== "javascript") {
             this._parsePath(str, start, end);
         }
-        else {
+        else { //For javascript the pathname is just the rest of it
             this.pathname = str.slice(start, end + 1 );
         }
     }
+
+    if (this.pathname === "" && this.hostname !== "" &&
+        this._slashProtocols[this._protocol]) {
+        this.pathname = "/";
+    }
+
+    if (parseQueryString) {
+        var search = this.search;
+        if (search.charCodeAt(0) === QUESTION_MARK) {
+            search = search.slice(1);
+        }
+        //This calls a setter function, there is no .query data property
+        this.query = querystring.parse(search);
+    }
 };
 
-//TODO replace with querystringparser
-var querystring = require("querystring");
+Url.prototype.resolve = function Url$resolve(relative) {
+    return this.resolveObject(Url.parse(relative, false, true)).format();
+};
+
 Url.prototype.format = function Url$format() {
     var auth = this.auth || "";
 
@@ -76,8 +98,10 @@ Url.prototype.format = function Url$format() {
     var host = false;
     var scheme = "";
 
-    if (this.query && typeof this.query === "object") {
-        query = querystring.stringify(this.query);
+    //Cache the result of the getter function
+    var q = this.query;
+    if (q && typeof q === "object") {
+        query = querystring.stringify(q);
     }
 
     if (!search) {
@@ -121,15 +145,226 @@ Url.prototype.format = function Url$format() {
     return scheme + (host === false ? "" : host) + pathname + search + hash;
 };
 
-Url.prototype._queryToSearch = function Url$_queryToSearch() {
-    var query = this.query;
+Url.prototype.resolveObject = function Url$resolveObject(relative) {
+    if (typeof relative === "string")
+        relative = Url.parse(relative, false, true);
 
-    if (query === null || query === "") return "";
+    var result = this._clone();
 
-    if (typeof query === "string") {
-        return "?" + query;
+    // hash is always overridden, no matter what.
+    // even href="" will remove it.
+    result.hash = relative.hash;
+
+    // if the relative url is empty, then there"s nothing left to do here.
+    if (relative.href === "") {
+        result._href = "";
+        return result;
     }
-    //TODO Serialize querystring
+
+    // hrefs like //foo/bar always cut to the protocol.
+    if (relative.slashes && !relative._protocol) {
+        relative._copyPropsTo(result, true);
+
+        if (slashProtocols[result._protocol] &&
+            result.hostname && !result.pathname) {
+            result.pathname = "/";
+        }
+        result._href = "";
+        return result;
+    }
+
+    if (relative._protocol && relative._protocol !== result._protocol) {
+        // if it"s a known url protocol, then changing
+        // the protocol does weird things
+        // first, if it"s not file:, then we MUST have a host,
+        // and if there was a path
+        // to begin with, then we MUST have a path.
+        // if it is file:, then the host is dropped,
+        // because that"s known to be hostless.
+        // anything else is assumed to be absolute.
+        if (!slashProtocols[relative._protocol]) {
+            relative._copyPropsTo(result, false);
+            result._href = "";
+            return result;
+        }
+
+        result._protocol = relative._protocol;
+        if (!relative.host && relative._protocol !== "javascript") {
+            var relPath = (relative.pathname || "").split("/");
+            while (relPath.length && !(relative.host = relPath.shift()));
+            if (!relative.host) relative.host = "";
+            if (!relative.hostname) relative.hostname = "";
+            if (relPath[0] !== "") relPath.unshift("");
+            if (relPath.length < 2) relPath.unshift("");
+            result.pathname = relPath.join("/");
+        } else {
+            result.pathname = relative.pathname;
+        }
+
+        result.search = relative.search;
+        result.host = relative.host || "";
+        result.auth = relative.auth;
+        result.hostname = relative.hostname || relative.host;
+        result._port = relative._port;
+        result.slashes = result.slashes || relative.slashes;
+        result._href = "";
+        return result;
+    }
+
+    var isSourceAbs =
+        (result.pathname && result.pathname.charCodeAt(0) === SLASH);
+    var isRelAbs = (
+            relative.host ||
+            relative.pathname && relative.pathname.charCodeAt(0) === SLASH
+        );
+    var mustEndAbs = (isRelAbs || isSourceAbs ||
+                        (result.host && relative.pathname));
+
+    var removeAllDots = mustEndAbs;
+
+    var srcPath = result.pathname && result.pathname.split("/") || [];
+    var relPath = relative.pathname && relative.pathname.split("/") || [];
+    var psychotic = result._protocol && !slashProtocols[result._protocol];
+
+    // if the url is a non-slashed url, then relative
+    // links like ../.. should be able
+    // to crawl up to the hostname, as well.  This is strange.
+    // result.protocol has already been set by now.
+    // Later on, put the first path part into the host field.
+    if (psychotic) {
+        result.hostname = "";
+        result._port = -1;
+        if (result.host) {
+            if (srcPath[0] === "") srcPath[0] = result.host;
+            else srcPath.unshift(result.host);
+        }
+        result.host = "";
+        if (relative._protocol) {
+            relative.hostname = "";
+            relative._port = -1;
+            if (relative.host) {
+                if (relPath[0] === "") relPath[0] = relative.host;
+                else relPath.unshift(relative.host);
+            }
+            relative.host = "";
+        }
+        mustEndAbs = mustEndAbs && (relPath[0] === "" || srcPath[0] === "");
+    }
+
+    if (isRelAbs) {
+        // it"s absolute.
+        result.host = relative.host ?
+            relative.host : result.host;
+        result.hostname = relative.hostname ?
+            relative.hostname : result.hostname;
+        result.search = relative.search;
+        srcPath = relPath;
+        // fall through to the dot-handling below.
+    } else if (relPath.length) {
+        // it"s relative
+        // throw away the existing file, and take the new path instead.
+        if (!srcPath) srcPath = [];
+        srcPath.pop();
+        srcPath = srcPath.concat(relPath);
+        result.search = relative.search;
+    } else if (relative.search) {
+        // just pull out the search.
+        // like href="?foo".
+        // Put this after the other two cases because it simplifies the booleans
+        if (psychotic) {
+            result.hostname = result.host = srcPath.shift();
+            //occationaly the auth can get stuck only in host
+            //this especialy happens in cases like
+            //url.resolveObject("mailto:local1@domain1", "local2@domain2")
+            var authInHost = result.host && result.host.indexOf("@") > 0 ?
+                result.host.split("@") : false;
+            if (authInHost) {
+                result.auth = authInHost.shift();
+                result.host = result.hostname = authInHost.shift();
+            }
+        }
+        result.search = relative.search;
+        result._href = "";
+        return result;
+    }
+
+    if (!srcPath.length) {
+        // no path at all.  easy.
+        // we"ve already handled the other stuff above.
+        result.pathname = "";
+        result._href = "";
+        return result;
+    }
+
+    // if a url ENDs in . or .., then it must get a trailing slash.
+    // however, if it ends in anything else non-slashy,
+    // then it must NOT get a trailing slash.
+    var last = srcPath.slice(-1)[0];
+    var hasTrailingSlash = (
+        (result.host || relative.host) && (last === "." || last === "..") ||
+        last === "");
+
+    // strip single dots, resolve double dots to parent dir
+    // if the path tries to go above the root, `up` ends up > 0
+    var up = 0;
+    for (var i = srcPath.length; i >= 0; i--) {
+        last = srcPath[i];
+        if (last == ".") {
+            srcPath.splice(i, 1);
+        } else if (last === "..") {
+            srcPath.splice(i, 1);
+            up++;
+        } else if (up) {
+            srcPath.splice(i, 1);
+            up--;
+        }
+    }
+
+    // if the path is allowed to go above the root, restore leading ..s
+    if (!mustEndAbs && !removeAllDots) {
+        for (; up--; up) {
+            srcPath.unshift("..");
+        }
+    }
+
+    if (mustEndAbs && srcPath[0] !== "" &&
+        (!srcPath[0] || srcPath[0].charCodeAt(0) !== SLASH)) {
+        srcPath.unshift("");
+    }
+
+    if (hasTrailingSlash && (srcPath.join("/").substr(-1) !== "/")) {
+        srcPath.push("");
+    }
+
+    var isAbsolute = srcPath[0] === "" ||
+        (srcPath[0] && srcPath[0].charCodeAt(0) === SLASH);
+
+    // put the host back
+    if (psychotic) {
+        result.hostname = result.host = isAbsolute ? "" :
+            srcPath.length ? srcPath.shift() : "";
+        //occationaly the auth can get stuck only in host
+        //this especialy happens in cases like
+        //url.resolveObject("mailto:local1@domain1", "local2@domain2")
+        var authInHost = result.host && result.host.indexOf("@") > 0 ?
+            result.host.split("@") : false;
+        if (authInHost) {
+            result.auth = authInHost.shift();
+            result.host = result.hostname = authInHost.shift();
+        }
+    }
+
+    mustEndAbs = mustEndAbs || (result.host && srcPath.length);
+
+    if (mustEndAbs && !isAbsolute) {
+        srcPath.unshift("");
+    }
+
+    result.pathname = srcPath.length === 0 ? "" : srcPath.join("/");
+    result.auth = relative.auth || result.auth;
+    result.slashes = result.slashes || relative.slashes;
+    result._href = "";
+    return result;
 };
 
 var punycode = require("punycode");
@@ -220,18 +455,35 @@ Url.prototype._parsePort = function Url$_parsePort(str, start, end) {
     return i - start;
 };
 
-Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
+Url.prototype._parseHost =
+function Url$_parseHost(str, start, end, slashesDenoteHost) {
+    var hostEndingCharacters = this._hostEndingCharacters;
     if (str.charCodeAt(start) === SLASH &&
         str.charCodeAt(start + 1) === SLASH) {
         this.slashes = true;
+
+        //The string starts with //
         if (start === 0) {
-            var containsAt = str.indexOf("@");
-            if (containsAt === -1)
+            //The string is just "//"
+            if (end < 2) return start;
+            //If slashes do not denote host and there is no auth,
+            //there is no host when the string starts with //
+            var hasAuth =
+                containsCharacter(str, AT_SIGN, 2, hostEndingCharacters);
+            if (!hasAuth && !slashesDenoteHost) {
                 return start;
+            }
         }
+        //There is a host that starts after the //
         start += 2;
     }
-    else if (this._protocol === "") {
+    //If there is no slashes, there is no hostname if
+    //1. there was no protocol at all
+    else if (this._protocol === "" ||
+        //2. there was a protocol that requires slashes
+        //e.g. in 'http:asd' 'asd' is not a hostname
+        slashProtocols[this._protocol]
+    ) {
         return start;
     }
 
@@ -242,33 +494,42 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
     var lastCh = -1;
     var portLength = 0;
     var charsAfterDot = 0;
-    var hostEndingCharacters = this._hostEndingCharacters;
-    var decode = false;
+    var authNeedsDecoding = false;
 
     var j = -1;
+
+    //Find the last occurrence of an @-sign until hostending character is met
+    //also mark if decoding is needed for the auth portion
     for (var i = start; i <= end; ++i) {
         var ch = str.charCodeAt(i);
 
         if (ch === AT_SIGN) {
             j = i;
         }
+        //This check is very, very cheap. Unneeded decodeURIComponent is very
+        //very expensive
         else if (ch === PERCENT) {
-            decode = true;
+            authNeedsDecoding = true;
         }
         else if (hostEndingCharacters[ch] === 1) {
             break;
         }
     }
 
+    //@-sign was found at index j, everything to the left from it
+    //is auth part
     if (j > -1) {
-        this._parseAuth(str, start, j - 1, decode);
+        this._parseAuth(str, start, j - 1, authNeedsDecoding);
+        //hostname starts after the last @-sign
         start = hostNameStart = j + 1;
     }
 
+    //Host name is starting with a [
     if (str.charCodeAt(start) === LEFT_BRACKET) {
         for (var i = start + 1; i <= end; ++i) {
             var ch = str.charCodeAt(i);
 
+            //Assume valid IP6 is between the brackets
             if (ch === RIGHT_BRACKET) {
                 if (str.charCodeAt(i + 1) === COLON) {
                     portLength = this._parsePort(str, i + 2, end) + 1;
@@ -278,9 +539,11 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
                 this.host = this._port > 0
                     ? "[" + hostname + "]:" + this._port
                     : "[" + hostname + "]";
+                this.pathname = "/";
                 return i + portLength + 1;
             }
         }
+        //Empty hostname, [ starts a path
         return start;
     }
 
@@ -349,6 +612,38 @@ Url.prototype._parseHost = function Url$_parseHost(str, start, end) {
 
     return hostNameEnd + 1 + portLength;
 
+};
+
+Url.prototype._copyPropsTo = function Url$_copyPropsTo(input, noProtocol) {
+    if (!noProtocol) {
+        input._protocol = this._protocol;
+    }
+    input._href = this._href;
+    input._port = this._port;
+    input._prependSlash = this._prependSlash;
+    input.auth = this.auth;
+    input.slashes = this.slashes;
+    input.host = this.host;
+    input.hostname = this.hostname;
+    input.hash = this.hash;
+    input.search = this.search;
+    input.pathname = this.pathname;
+};
+
+Url.prototype._clone = function Url$_clone() {
+    var ret = new Url();
+    ret._protocol = this._protocol;
+    ret._href = this._href;
+    ret._port = this._port;
+    ret._prependSlash = this._prependSlash;
+    ret.auth = this.auth;
+    ret.slashes = this.slashes;
+    ret.host = this.host;
+    ret.hostname = this.hostname;
+    ret.hash = this.hash;
+    ret.search = this.search;
+    ret.pathname = this.pathname;
+    return ret;
 };
 
 Url.prototype._getComponentEscaped =
@@ -430,7 +725,7 @@ Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
     }
 
     if (queryStart > queryEnd) {
-        this.search = this.query = "";
+        this.search = "";
         return;
     }
 
@@ -466,10 +761,25 @@ Object.defineProperty(Url.prototype, "port", {
 
 Object.defineProperty(Url.prototype, "query", {
     get: function() {
-        return this.search !== "" ? this.search.slice(1) : "";
-    },
-    set: function() {
+        var query = this._query;
+        if (query != null) {
+            return query;
+        }
+        var search = this.search;
 
+        if (search) {
+            if (search.charCodeAt(0) === QUESTION_MARK) {
+                search = search.slice(1);
+            }
+            if (search !== "") {
+                this._query = search;
+                return search;
+            }
+        }
+        return "";
+    },
+    set: function(v) {
+        this._query = v;
     }
 });
 
@@ -477,9 +787,7 @@ Object.defineProperty(Url.prototype, "path", {
     get: function() {
         return this.pathname + this.search;
     },
-    set: function() {
-
-    }
+    set: function() {}
 });
 
 Object.defineProperty(Url.prototype, "protocol", {
@@ -488,25 +796,34 @@ Object.defineProperty(Url.prototype, "protocol", {
         return proto === "" ? "" : proto + ":";
     },
     set: function(v) {
-        this._protocol = v.slice(0, v.length - 1);
+        var end = v.length - 1;
+        if (v.charCodeAt(end) === COLON) {
+            this._protocol = v.slice(0, end);
+        }
+        else {
+            this._protocol = v;
+        }
+
     }
 });
 
 Object.defineProperty(Url.prototype, "href", {
     get: function() {
         var href = this._href;
-        if (href === "") {
+        if (!href) {
             href = this._href = this.format();
         }
         return href;
     },
-    set: function() {
+    set: function(v) {
+        this._href = v;
     }
 });
 
-Url.parse = function Url$Parse(str) {
+Url.parse = function Url$Parse(str, parseQueryString, hostDenotesSlash) {
+    if (str instanceof Url) return str;
     var ret = new Url();
-    ret.parse(str);
+    ret.parse(str, !!parseQueryString, !!hostDenotesSlash);
     return ret;
 };
 
@@ -518,6 +835,15 @@ Url.format = function Url$Format(obj) {
         return Url.prototype.format.call(obj);
     }
     return obj.format();
+};
+
+Url.resolve = function Url$Resolve(source, relative) {
+    return Url.parse(source, false, true).resolve(relative);
+};
+
+Url.resolveObject = function Url$ResolveObject(source, relative) {
+    if (!source) return relative;
+    return Url.parse(source, false, true).resolveObject(relative);
 };
 
 function _escapePath(pathname) {
@@ -532,6 +858,26 @@ function _escapeSearch(search) {
     });
 }
 
+//Search `char1` (integer code for a character) in `string`
+//starting from `fromIndex` and ending at `string.length - 1`
+//or when a stop character is found
+function containsCharacter(string, char1, fromIndex, stopCharacterTable) {
+    var len = string.length;
+    for (var i = fromIndex; i < len; ++i) {
+        var ch = string.charCodeAt(i);
+
+        if (ch === char1) {
+            return true;
+        }
+        else if (stopCharacterTable[ch] === 1) {
+            return false;
+        }
+    }
+    return false;
+}
+
+//See if `char1` or `char2` (integer codes for characters)
+//is contained in `string`
 function containsCharacter2(string, char1, char2) {
     for (var i = 0, len = string.length; i < len; ++i) {
         var ch = string.charCodeAt(i);
@@ -540,6 +886,17 @@ function containsCharacter2(string, char1, char2) {
     return false;
 }
 
+//Makes an array of 128 uint8's which represent boolean values.
+//Spec is an array of ascii code points or ascii code point ranges
+//ranges are expressed as [start, end]
+
+//Create a table with the characters 0x30-0x39 (decimals '0' - '9') and
+//0x7A (lowercaseletter 'z') as `true`:
+//
+//var a = makeAsciiTable([[0x30, 0x39], 0x7A]);
+//a[0x30]; //1
+//a[0x15]; //0
+//a[0x35]; //1
 function makeAsciiTable(spec) {
     var ret = new Uint8Array(128);
     spec.forEach(function(item){
