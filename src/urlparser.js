@@ -584,10 +584,9 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
             }
             else if (!(ch === HYPHEN || ch === LO_DASH ||
                 (FIRST_DECIMAL <= ch && ch <= LAST_DECIMAL))) {
-                if (hostEndingCharacters[ch] === 0) {
-                    if (i - hostNameStart > 1) {
-                        this._prependSlash = true;
-                    }
+                if (hostEndingCharacters[ch] === 0 &&
+                    this._noPrependSlashHostEnders[ch] === 0) {
+                    this._prependSlash = true;
                 }
                 hostNameEnd = i - 1;
                 break;
@@ -595,7 +594,9 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
         }
         else if (ch >= 0x7B) {
             if (ch <= 0x7E) {
-                this._prependSlash = true;
+                if (this._noPrependSlashHostEnders[ch] === 0) {
+                    this._prependSlash = true;
+                }
                 hostNameEnd = i - 1;
                 break;
             }
@@ -931,10 +932,13 @@ function makeAsciiTable(spec) {
     return ret;
 }
 
+
 var autoEscape = ["<", ">", "\"", "`", " ", "\r", "\n",
     "\t", "{", "}", "|", "\\", "^", "`", "'"];
 
 var autoEscapeMap = new Array(128);
+
+
 
 for (var i = 0, len = autoEscapeMap.length; i < len; ++i) {
     autoEscapeMap[i] = "";
@@ -980,6 +984,17 @@ Url.prototype._hostEndingCharacters = makeAsciiTable([
 
 Url.prototype._autoEscapeCharacters = makeAsciiTable(
     autoEscape.map(function(v) {
+        return v.charCodeAt(0);
+    })
+);
+
+//If these characters end a host name, the path will not be prepended a /
+Url.prototype._noPrependSlashHostEnders = makeAsciiTable(
+    [
+        "<", ">", "'", "`", " ", "\r",
+        "\n", "\t", "{", "}", "|", "\\",
+        "^", "`", "\"", "%", ";"
+    ].map(function(v) {
         return v.charCodeAt(0);
     })
 );

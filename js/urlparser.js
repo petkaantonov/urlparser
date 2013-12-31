@@ -523,10 +523,9 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
             }
             else if (!(ch === 45 || ch === 95 ||
                 (48 <= ch && ch <= 57))) {
-                if (hostEndingCharacters[ch] === 0) {
-                    if (i - hostNameStart > 1) {
-                        this._prependSlash = true;
-                    }
+                if (hostEndingCharacters[ch] === 0 &&
+                    this._noPrependSlashHostEnders[ch] === 0) {
+                    this._prependSlash = true;
                 }
                 hostNameEnd = i - 1;
                 break;
@@ -534,7 +533,9 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
         }
         else if (ch >= 0x7B) {
             if (ch <= 0x7E) {
-                this._prependSlash = true;
+                if (this._noPrependSlashHostEnders[ch] === 0) {
+                    this._prependSlash = true;
+                }
                 hostNameEnd = i - 1;
                 break;
             }
@@ -847,10 +848,13 @@ function makeAsciiTable(spec) {
     return ret;
 }
 
+
 var autoEscape = ["<", ">", "\"", "`", " ", "\r", "\n",
     "\t", "{", "}", "|", "\\", "^", "`", "'"];
 
 var autoEscapeMap = new Array(128);
+
+
 
 for (var i = 0, len = autoEscapeMap.length; i < len; ++i) {
     autoEscapeMap[i] = "";
@@ -895,6 +899,16 @@ Url.prototype._hostEndingCharacters = makeAsciiTable([
 
 Url.prototype._autoEscapeCharacters = makeAsciiTable(
     autoEscape.map(function(v) {
+        return v.charCodeAt(0);
+    })
+);
+
+Url.prototype._noPrependSlashHostEnders = makeAsciiTable(
+    [
+        "<", ">", "'", "`", " ", "\r",
+        "\n", "\t", "{", "}", "|", "\\",
+        "^", "`", "\"", "%", ";"
+    ].map(function(v) {
         return v.charCodeAt(0);
     })
 );
