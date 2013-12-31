@@ -21,18 +21,18 @@
  */
 "use strict";
 function Url() {
-    this._protocol = "";
+    this._protocol = null;
     this._href = "";
     this._port = -1;
     this._query = null;
 
-    this.auth = "";
-    this.slashes = false;
-    this.host = "";
-    this.hostname = "";
-    this.hash = "";
-    this.search = "";
-    this.pathname = "";
+    this.auth = null;
+    this.slashes = null;
+    this.host = null;
+    this.hostname = null;
+    this.hash = null;
+    this.search = null;
+    this.pathname = null;
 
     this._prependSlash = false;
 }
@@ -54,6 +54,11 @@ function Url$parse(str, parseQueryString, hostDenotesSlash) {
 
     if (this._protocol !== "javascript") {
         start = this._parseHost(str, start, end, hostDenotesSlash);
+        var proto = this._protocol;
+        if (!this.hostname &&
+            (this.slashes || (proto && !slashProtocols[proto]))) {
+            this.hostname = this.host = "";
+        }
     }
 
     if (start <= end) {
@@ -73,15 +78,19 @@ function Url$parse(str, parseQueryString, hostDenotesSlash) {
         }
         else {            this.pathname = str.slice(start, end + 1 );
         }
+
     }
 
-    if (this.pathname === "" && this.hostname !== "" &&
+    if (!this.pathname && this.hostname &&
         this._slashProtocols[this._protocol]) {
         this.pathname = "/";
     }
 
     if (parseQueryString) {
         var search = this.search;
+        if (search == null) {
+            search = this.search = "";
+        }
         if (search.charCodeAt(0) === 63) {
             search = search.slice(1);
         }
@@ -166,7 +175,7 @@ Url.prototype.resolveObject = function Url$resolveObject(relative) {
 
     result.hash = relative.hash;
 
-    if (relative.href === "") {
+    if (!relative.href) {
         result._href = "";
         return result;
     }
@@ -275,7 +284,7 @@ Url.prototype.resolveObject = function Url$resolveObject(relative) {
     }
 
     if (!srcPath.length) {
-        result.pathname = "";
+        result.pathname = null;
         result._href = "";
         return result;
     }
@@ -334,7 +343,7 @@ Url.prototype.resolveObject = function Url$resolveObject(relative) {
         srcPath.unshift("");
     }
 
-    result.pathname = srcPath.length === 0 ? "" : srcPath.join("/");
+    result.pathname = srcPath.length === 0 ? null : srcPath.join("/");
     result.auth = relative.auth || result.auth;
     result.slashes = result.slashes || relative.slashes;
     result._href = "";
@@ -437,7 +446,7 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
         }
         start += 2;
     }
-    else if (this._protocol === "" ||
+    else if (!this._protocol ||
         slashProtocols[this._protocol]
     ) {
         return start;
@@ -515,7 +524,9 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
             else if (!(ch === 45 || ch === 95 ||
                 (48 <= ch && ch <= 57))) {
                 if (hostEndingCharacters[ch] === 0) {
-                    this._prependSlash = true;
+                    if (i - hostNameStart > 1) {
+                        this._prependSlash = true;
+                    }
                 }
                 hostNameEnd = i - 1;
                 break;
@@ -684,7 +695,7 @@ Object.defineProperty(Url.prototype, "port", {
         if (this._port >= 0) {
             return ("" + this._port);
         }
-        return "";
+        return null;
     },
     set: function(v) {
         this._port = parseInt(v, 10);
@@ -708,7 +719,7 @@ Object.defineProperty(Url.prototype, "query", {
                 return search;
             }
         }
-        return "";
+        return search;
     },
     set: function(v) {
         this._query = v;
@@ -717,7 +728,12 @@ Object.defineProperty(Url.prototype, "query", {
 
 Object.defineProperty(Url.prototype, "path", {
     get: function() {
-        return this.pathname + this.search;
+        var p = this.pathname || "";
+        var s = this.search || "";
+        if (p || s) {
+            return p + s;
+        }
+        return (p == null && s) ? ("/" + s) : null;
     },
     set: function() {}
 });
@@ -725,7 +741,7 @@ Object.defineProperty(Url.prototype, "path", {
 Object.defineProperty(Url.prototype, "protocol", {
     get: function() {
         var proto = this._protocol;
-        return proto === "" ? "" : proto + ":";
+        return proto ? proto + ":" : proto;
     },
     set: function(v) {
         var end = v.length - 1;

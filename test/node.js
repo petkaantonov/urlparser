@@ -22,6 +22,8 @@
 var assert = require('assert');
 var url = require('../js/urlparser.js');
 
+// URLs to parse, and expected data
+// { url : parsed }
 var parseTests = {
   '//some_path' : {
     'href': '//some_path',
@@ -786,11 +788,13 @@ var parseTests = {
     slashes: true,
     auth: 'a\r" \t\n<\'b:b',
     host: 'c',
+    port: null,
     hostname: 'c',
+    hash: null,
     search: '?f',
     query: 'f',
-    pathname: '/%0D%0Ad/e',
-    path: '/%0D%0Ad/e?f',
+    pathname: '%0D%0Ad/e',
+    path: '%0D%0Ad/e?f',
     href: 'http://a%0D%22%20%09%0A%3C\'b:b@c/%0D%0Ad/e?f'
   }
 

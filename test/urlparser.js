@@ -10,14 +10,14 @@ describe("basic tests", function() {
         assert(a.protocol === "http:");
         assert(a.path === "/");
         assert(a.pathname === "/");
-        assert(a.search === "");
+        assert(a.search === null);
 
         a = Url.parse("http://www.google.com/");
         assert(a.host === "www.google.com");
         assert(a.protocol === "http:");
         assert(a.path === "/");
         assert(a.pathname === "/");
-        assert(a.search === "");
+        assert(a.search === null);
 
         a = Url.parse("http://www.google.com/?");
         assert(a.host === "www.google.com");
@@ -57,7 +57,7 @@ describe("basic tests", function() {
         assert(a.path === "/?querystring");
         assert(a.pathname === "/");
         assert(a.search === "?querystring");
-        assert(a.hash === "");
+        assert(a.hash === null);
 
         a = Url.parse("http://www.google.com?querystring");
         assert(a.host === "www.google.com");
@@ -65,7 +65,7 @@ describe("basic tests", function() {
         assert(a.path === "/?querystring");
         assert(a.pathname === "/");
         assert(a.search === "?querystring");
-        assert(a.hash === "");
+        assert(a.hash === null);
 
         a = Url.parse("http://www.google.com/?query#string");
         assert(a.host === "www.google.com");
@@ -81,7 +81,7 @@ describe("basic tests", function() {
         assert(a.protocol === "http:");
         assert(a.path === "/");
         assert(a.pathname === "/");
-        assert(a.search === "");
+        assert(a.search === null);
         assert(a.hash === "#string");
     });
 
@@ -152,7 +152,7 @@ describe("basic tests", function() {
 
     specify("weird protocols", function() {
         a = Url.parse("javascript:alert('hello world');");
-        assert.equal(a.host, "");
+        assert.equal(a.host, null);
         assert.equal(a.pathname, "alert('hello world');");
         assert.equal(a.href, "javascript:alert('hello world');");
 
@@ -173,7 +173,7 @@ describe("basic tests", function() {
         assert.equal(a.port, "8080");
 
         a = Url.parse("http://www.google.com:");
-        assert.equal(a.port, "");
+        assert.equal(a.port, null);
 
         a = Url.parse("http://www.google.com:008");
         assert.equal(a.port, "8");

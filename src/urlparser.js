@@ -3,18 +3,18 @@ function Url() {
     //For more efficient internal representation and laziness.
     //The non-underscore versions of these properties are accessor functions
     //defined on the prototype.
-    this._protocol = "";
+    this._protocol = null;
     this._href = "";
     this._port = -1;
     this._query = null;
 
-    this.auth = "";
-    this.slashes = false;
-    this.host = "";
-    this.hostname = "";
-    this.hash = "";
-    this.search = "";
-    this.pathname = "";
+    this.auth = null;
+    this.slashes = null;
+    this.host = null;
+    this.hostname = null;
+    this.hash = null;
+    this.search = null;
+    this.pathname = null;
 
     this._prependSlash = false;
 }
@@ -38,6 +38,11 @@ function Url$parse(str, parseQueryString, hostDenotesSlash) {
     //Javascript doesn't have host
     if (this._protocol !== "javascript") {
         start = this._parseHost(str, start, end, hostDenotesSlash);
+        var proto = this._protocol;
+        if (!this.hostname &&
+            (this.slashes || (proto && !slashProtocols[proto]))) {
+            this.hostname = this.host = "";
+        }
     }
 
     if (start <= end) {
@@ -58,15 +63,19 @@ function Url$parse(str, parseQueryString, hostDenotesSlash) {
         else { //For javascript the pathname is just the rest of it
             this.pathname = str.slice(start, end + 1 );
         }
+
     }
 
-    if (this.pathname === "" && this.hostname !== "" &&
+    if (!this.pathname && this.hostname &&
         this._slashProtocols[this._protocol]) {
         this.pathname = "/";
     }
 
     if (parseQueryString) {
         var search = this.search;
+        if (search == null) {
+            search = this.search = "";
+        }
         if (search.charCodeAt(0) === QUESTION_MARK) {
             search = search.slice(1);
         }
@@ -156,7 +165,7 @@ Url.prototype.resolveObject = function Url$resolveObject(relative) {
     result.hash = relative.hash;
 
     // if the relative url is empty, then there"s nothing left to do here.
-    if (relative.href === "") {
+    if (!relative.href) {
         result._href = "";
         return result;
     }
@@ -291,7 +300,7 @@ Url.prototype.resolveObject = function Url$resolveObject(relative) {
     if (!srcPath.length) {
         // no path at all.  easy.
         // we"ve already handled the other stuff above.
-        result.pathname = "";
+        result.pathname = null;
         result._href = "";
         return result;
     }
@@ -360,7 +369,7 @@ Url.prototype.resolveObject = function Url$resolveObject(relative) {
         srcPath.unshift("");
     }
 
-    result.pathname = srcPath.length === 0 ? "" : srcPath.join("/");
+    result.pathname = srcPath.length === 0 ? null : srcPath.join("/");
     result.auth = relative.auth || result.auth;
     result.slashes = result.slashes || relative.slashes;
     result._href = "";
@@ -479,7 +488,7 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
     }
     //If there is no slashes, there is no hostname if
     //1. there was no protocol at all
-    else if (this._protocol === "" ||
+    else if (!this._protocol ||
         //2. there was a protocol that requires slashes
         //e.g. in 'http:asd' 'asd' is not a hostname
         slashProtocols[this._protocol]
@@ -576,7 +585,9 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
             else if (!(ch === HYPHEN || ch === LO_DASH ||
                 (FIRST_DECIMAL <= ch && ch <= LAST_DECIMAL))) {
                 if (hostEndingCharacters[ch] === 0) {
-                    this._prependSlash = true;
+                    if (i - hostNameStart > 1) {
+                        this._prependSlash = true;
+                    }
                 }
                 hostNameEnd = i - 1;
                 break;
@@ -752,7 +763,7 @@ Object.defineProperty(Url.prototype, "port", {
         if (this._port >= 0) {
             return ("" + this._port);
         }
-        return "";
+        return null;
     },
     set: function(v) {
         this._port = parseInt(v, 10);
@@ -776,7 +787,7 @@ Object.defineProperty(Url.prototype, "query", {
                 return search;
             }
         }
-        return "";
+        return search;
     },
     set: function(v) {
         this._query = v;
@@ -785,7 +796,12 @@ Object.defineProperty(Url.prototype, "query", {
 
 Object.defineProperty(Url.prototype, "path", {
     get: function() {
-        return this.pathname + this.search;
+        var p = this.pathname || "";
+        var s = this.search || "";
+        if (p || s) {
+            return p + s;
+        }
+        return (p == null && s) ? ("/" + s) : null;
     },
     set: function() {}
 });
@@ -793,7 +809,7 @@ Object.defineProperty(Url.prototype, "path", {
 Object.defineProperty(Url.prototype, "protocol", {
     get: function() {
         var proto = this._protocol;
-        return proto === "" ? "" : proto + ":";
+        return proto ? proto + ":" : proto;
     },
     set: function(v) {
         var end = v.length - 1;
