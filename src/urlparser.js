@@ -1003,7 +1003,7 @@ Url.prototype._autoEscapeMap = autoEscapeMap;
 
 module.exports = Url;
 
-Url.replace = function Url_replace() {
+Url.replace = function Url$Replace() {
     require.cache["url"] = {
         exports: Url
     };
