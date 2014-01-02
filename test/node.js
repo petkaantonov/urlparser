@@ -20,7 +20,7 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 var assert = require('assert');
-var url = require('../js/urlparser.js');
+var url = require('../src/urlparser.js');
 
 // URLs to parse, and expected data
 // { url : parsed }

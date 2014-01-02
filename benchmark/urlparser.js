@@ -1,4 +1,4 @@
-var url = require('../js/urlparser.js')
+var url = require('../src/urlparser.js')
 var n = 25 * 100;
 
 var urls = [

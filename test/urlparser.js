@@ -1,5 +1,5 @@
 var assert = require("assert");
-var Url = require("../js/urlparser.js");
+var Url = require("../src/urlparser.js");
 
 
 describe("basic tests", function() {

@@ -1,23 +1,7 @@
 "use strict";
 Error.stackTraceLimit = 100;
-var astPasses = require("./ast_passes.js");
 
 module.exports = function( grunt ) {
-    var isCI = !!grunt.option("ci");
-
-    var license;
-    function getLicense() {
-        if( !license ) {
-            var fs = require("fs");
-            var text = fs.readFileSync("LICENSE", "utf8");
-            text = text.split("\n").map(function(line, index){
-                return " * " + line;
-            }).join("\n")
-            license = "/**\n" + text + "\n */\n";
-        }
-        return license
-    }
-
     function writeFile( dest, content ) {
         grunt.file.write( dest, content );
         grunt.log.writeln('File "' + dest + '" created.');
@@ -25,31 +9,18 @@ module.exports = function( grunt ) {
 
     var gruntConfig = {};
 
-    var getGlobals = function() {
-        var fs = require("fs");
-        var file = "./src/constants.js";
-        var contents = fs.readFileSync(file, "utf8");
-        var rconstantname = /CONSTANT\(\s*([^,]+)/g;
-        var m;
-        var globals = {
-            "console": false,
-            "require": false,
-            "module": false,
-            "define": false,
-            "escape": false
-        };
-        while( ( m = rconstantname.exec( contents ) ) ) {
-            globals[m[1]] = false;
-        }
-        return globals;
-    }
-
     gruntConfig.pkg = grunt.file.readJSON("package.json");
 
     gruntConfig.jshint = {
         all: {
             options: {
-                globals: getGlobals(),
+                globals: {
+                    "console": false,
+                    "require": false,
+                    "module": false,
+                    "define": false,
+                    "escape": false
+                },
 
                 "bitwise": false,
                 "camelcase": true,
@@ -112,45 +83,10 @@ module.exports = function( grunt ) {
         }
     };
 
-    if( !isCI ) {
-        gruntConfig.jshint.all.options.reporter = require("jshint-stylish");
-    }
-
-    gruntConfig.bump = {
-      options: {
-        files: ['package.json'],
-        updateConfigs: [],
-        commit: true,
-        commitMessage: 'Release v%VERSION%',
-        commitFiles: ['-a'],
-        createTag: true,
-        tagName: 'v%VERSION%',
-        tagMessage: 'Version %VERSION%',
-        false: true,
-        pushTo: 'master',
-        gitDescribeOptions: '--tags --always --abbrev=1 --dirty=-d' // options to use with '$ git describe'
-      }
-    };
-
+    gruntConfig.jshint.all.options.reporter = require("jshint-stylish");
     grunt.initConfig(gruntConfig);
     grunt.loadNpmTasks('grunt-contrib-jshint');
-    grunt.loadNpmTasks('grunt-bump');
 
-
-    grunt.registerTask( "build", function() {
-        var fs = require("fs");
-        var CONSTANTS_FILE = "./src/constants.js";
-
-        astPasses.readConstants(fs.readFileSync(CONSTANTS_FILE, "utf8"), CONSTANTS_FILE);
-        var fileNames = ["urlparser.js"];
-        fileNames.forEach(function(fileName){
-            var src = fs.readFileSync("./src/" + fileName, "utf8");
-            src = astPasses.removeComments(src, fileName);
-            src = astPasses.expandConstants(src, fileName);
-            src = getLicense() + src;
-            writeFile("./js/" + fileName, src);
-        });
-    });
 
     grunt.registerTask( "testrun", function() {
         var fs = require("fs");
@@ -183,7 +119,7 @@ module.exports = function( grunt ) {
         });
     });
 
-    grunt.registerTask( "test", ["jshint", "build", "testrun"] );
-    grunt.registerTask( "default", ["jshint", "build"] );
+    grunt.registerTask( "test", ["jshint", "testrun"] );
+    grunt.registerTask( "default", ["jshint"] );
 
 };
