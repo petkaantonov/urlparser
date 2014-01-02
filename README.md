@@ -6,7 +6,9 @@ Fast implementation of an url parser for node.js.
 
     npm install fast-url-parser
 
+```js
 var url = require("fast-url-parser");
+```
 
 #API
 
@@ -16,7 +18,9 @@ See [Node.JS URL API documentation](http://nodejs.org/docs/latest/api/url.html).
 
 If in your application you may want all modules use this parser automatically, you can do so by inserting this line at the beginning of your application:
 
-    require("fast-url-parser").replace();
+```js
+require("fast-url-parser").replace();
+```
 
 Anything that now calls `require("url")` will instead get an instance of this module instead of the url parser that comes with node core.
 
