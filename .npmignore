@@ -4,7 +4,6 @@ npm-debug.log
 test/*
 benchmark/*
 browser/*
-src/*
 async
 sync
 mixed
