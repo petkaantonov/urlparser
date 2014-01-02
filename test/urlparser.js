@@ -222,6 +222,11 @@ describe("basic tests", function() {
 
     });
 
+    specify('replace node\'s url', function() {
+        Url.replace();
+        assert.equal(Url, require('url'));
+    });
+
     //Syntax errors
 });
 

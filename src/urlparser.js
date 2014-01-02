@@ -1002,3 +1002,9 @@ Url.prototype._noPrependSlashHostEnders = makeAsciiTable(
 Url.prototype._autoEscapeMap = autoEscapeMap;
 
 module.exports = Url;
+
+Url.replace = function Url_replace() {
+    require.cache["url"] = {
+        exports: Url
+    };
+};
