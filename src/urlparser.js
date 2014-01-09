@@ -156,7 +156,7 @@ Url.prototype.format = function Url$format() {
 
 
     if (protocol) scheme = protocol + (slashes ? "//" : "");
-    else if (slashes && auth) scheme = "//";
+    else if (slashes) scheme = "//";
 
     if (slashes && pathname && pathname.charCodeAt(0) !== 0x2F /*'/'*/) {
         pathname = "/" + pathname;
@@ -504,6 +504,7 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
             var hasAuth =
                 containsCharacter(str, 0x40 /*'@'*/, 2, hostEndingCharacters);
             if (!hasAuth && !slashesDenoteHost) {
+                this.slashes = null;
                 return start;
             }
         }
@@ -791,7 +792,12 @@ Object.defineProperty(Url.prototype, "port", {
         return null;
     },
     set: function(v) {
-        this._port = parseInt(v, 10);
+        if (v == null) {
+            this._port = -1;
+        }
+        else {
+            this._port = parseInt(v, 10);
+        }
     }
 });
 
@@ -837,14 +843,18 @@ Object.defineProperty(Url.prototype, "protocol", {
         return proto ? proto + ":" : proto;
     },
     set: function(v) {
-        var end = v.length - 1;
-        if (v.charCodeAt(end) === 0x3A /*':'*/) {
-            this._protocol = v.slice(0, end);
+        if (typeof v === "string") {
+            var end = v.length - 1;
+            if (v.charCodeAt(end) === 0x3A /*':'*/) {
+                this._protocol = v.slice(0, end);
+            }
+            else {
+                this._protocol = v;
+            }
         }
-        else {
-            this._protocol = v;
+        else if (v == null) {
+            this._protocol = null;
         }
-
     }
 });
 

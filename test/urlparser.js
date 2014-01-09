@@ -222,11 +222,20 @@ describe("basic tests", function() {
 
     });
 
+    specify("setting null", function(){
+        var uri = Url.parse('https://github.com');
+        uri.protocol = null;
+        assert.equal(Url.format(uri), "//github.com/");
+
+        var uri = Url.parse('https://github.com:8080');
+        uri.port = null
+        //node behavior
+        assert.equal(Url.format(uri), "https://github.com:8080/");
+    });
+
     specify('replace node\'s url', function() {
         Url.replace();
         assert.equal(Url, require('url'));
     });
-
-    //Syntax errors
 });
 
