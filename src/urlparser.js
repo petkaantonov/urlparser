@@ -400,18 +400,11 @@ Url.prototype.resolveObject = function Url$resolveObject(relative) {
 
 var punycode = require("punycode");
 Url.prototype._hostIdna = function Url$_hostIdna(hostname) {
-    // IDNA Support: Returns a puny coded representation of "domain".
-    // It only converts the part of the domain name that
-    // has non ASCII characters. I.e. it dosent matter if
-    // you call it with a domain that already is in ASCII.
-    var domainArray = hostname.split(".");
-    var newOut = [];
-    for (var i = 0; i < domainArray.length; ++i) {
-        var s = domainArray[i];
-        newOut.push(s.match(/[^A-Za-z0-9_-]/) ?
-            "xn--" + punycode.encode(s) : s);
-    }
-    return newOut.join(".");
+    // IDNA Support: Returns a punycoded representation of "domain".
+    // It only converts parts of the domain name that
+    // have non-ASCII characters, i.e. it doesn't matter if
+    // you call it with a domain that already is ASCII-only.
+    return punycode.toASCII(hostname);
 };
 
 var escapePathName = Url.prototype._escapePathName =
