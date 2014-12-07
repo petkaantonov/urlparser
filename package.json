@@ -11,7 +11,9 @@
         "performance"
     ],
     "scripts": {
-        "test": "grunt test"
+        "test": "grunt test",
+        "bench": "node ./benchmark/urlparser.js",
+        "bench-node": "node ./benchmark/nodecore.js"
     },
     "homepage": "https://github.com/petkaantonov/urlparser",
     "repository": {
