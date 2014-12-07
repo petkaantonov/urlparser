@@ -340,7 +340,7 @@ Url.prototype.resolveObject = function Url$resolveObject(relative) {
     var up = 0;
     for (var i = srcPath.length; i >= 0; i--) {
         last = srcPath[i];
-        if (last == ".") {
+        if (last === ".") {
             srcPath.splice(i, 1);
         } else if (last === "..") {
             srcPath.splice(i, 1);
@@ -1031,7 +1031,7 @@ Url.prototype._autoEscapeMap = autoEscapeMap;
 module.exports = Url;
 
 Url.replace = function Url$Replace() {
-    require.cache["url"] = {
+    require.cache.url = {
         exports: Url
     };
 };
