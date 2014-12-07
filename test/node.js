@@ -19,7 +19,7 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-var assert = require('assert');
+var test = require('tape');
 var url = require('../src/urlparser.js');
 
 // URLs to parse, and expected data
@@ -512,24 +512,23 @@ var parseTests = {
   },
 
   'http://bucket_name.s3.amazonaws.com/image.jpg': {
-    protocol: 'http:',
+    'protocol': 'http:',
     'slashes': true,
-    slashes: true,
-    host: 'bucket_name.s3.amazonaws.com',
-    hostname: 'bucket_name.s3.amazonaws.com',
-    pathname: '/image.jpg',
-    href: 'http://bucket_name.s3.amazonaws.com/image.jpg',
+    'host': 'bucket_name.s3.amazonaws.com',
+    'hostname': 'bucket_name.s3.amazonaws.com',
+    'pathname': '/image.jpg',
+    'href': 'http://bucket_name.s3.amazonaws.com/image.jpg',
     'path': '/image.jpg'
   },
 
   'git+http://github.com/joyent/node.git': {
-    protocol: 'git+http:',
-    slashes: true,
-    host: 'github.com',
-    hostname: 'github.com',
-    pathname: '/joyent/node.git',
-    path: '/joyent/node.git',
-    href: 'git+http://github.com/joyent/node.git'
+    'protocol': 'git+http:',
+    'slashes': true,
+    'host': 'github.com',
+    'hostname': 'github.com',
+    'pathname': '/joyent/node.git',
+    'path': '/joyent/node.git',
+    'href': 'git+http://github.com/joyent/node.git'
   },
 
   //if local1@domain1 is uses as a relative URL it may
@@ -749,78 +748,71 @@ var parseTests = {
   },
 
   'http://x:1/\' <>"`/{}|\\^~`/': {
-    protocol: 'http:',
-    slashes: true,
-    host: 'x:1',
-    port: '1',
-    hostname: 'x',
-    pathname: '/%27%20%3C%3E%22%60/%7B%7D%7C%5C%5E~%60/',
-    path: '/%27%20%3C%3E%22%60/%7B%7D%7C%5C%5E~%60/',
-    href: 'http://x:1/%27%20%3C%3E%22%60/%7B%7D%7C%5C%5E~%60/'
+    'protocol': 'http:',
+    'slashes': true,
+    'host': 'x:1',
+    'port': '1',
+    'hostname': 'x',
+    'pathname': '/%27%20%3C%3E%22%60/%7B%7D%7C%5C%5E~%60/',
+    'path': '/%27%20%3C%3E%22%60/%7B%7D%7C%5C%5E~%60/',
+    'href': 'http://x:1/%27%20%3C%3E%22%60/%7B%7D%7C%5C%5E~%60/'
   },
 
   'http://a@b@c/': {
-    protocol: 'http:',
-    slashes: true,
-    auth: 'a@b',
-    host: 'c',
-    hostname: 'c',
-    href: 'http://a%40b@c/',
-    path: '/',
-    pathname: '/'
+    'protocol': 'http:',
+    'slashes': true,
+    'auth': 'a@b',
+    'host': 'c',
+    'hostname': 'c',
+    'href': 'http://a%40b@c/',
+    'path': '/',
+    'pathname': '/'
   },
 
   'http://a@b?@c': {
-    protocol: 'http:',
-    slashes: true,
-    auth: 'a',
-    host: 'b',
-    hostname: 'b',
-    href: 'http://a@b/?@c',
-    path: '/?@c',
-    pathname: '/',
-    search: '?@c',
-    query: '@c'
+    'protocol': 'http:',
+    'slashes': true,
+    'auth': 'a',
+    'host': 'b',
+    'hostname': 'b',
+    'href': 'http://a@b/?@c',
+    'path': '/?@c',
+    'pathname': '/',
+    'search': '?@c',
+    'query': '@c'
   },
 
   'http://a\r" \t\n<\'b:b@c\r\nd/e?f':{
-    protocol: 'http:',
-    slashes: true,
-    auth: 'a\r" \t\n<\'b:b',
-    host: 'c',
-    port: null,
-    hostname: 'c',
-    hash: null,
-    search: '?f',
-    query: 'f',
-    pathname: '%0D%0Ad/e',
-    path: '%0D%0Ad/e?f',
-    href: 'http://a%0D%22%20%09%0A%3C\'b:b@c/%0D%0Ad/e?f'
+    'protocol': 'http:',
+    'slashes': true,
+    'auth': 'a\r" \t\n<\'b:b',
+    'host': 'c',
+    'port': null,
+    'hostname': 'c',
+    'hash': null,
+    'search': '?f',
+    'query': 'f',
+    'pathname': '%0D%0Ad/e',
+    'path': '%0D%0Ad/e?f',
+    'href': 'http://a%0D%22%20%09%0A%3C\'b:b@c/%0D%0Ad/e?f'
   }
 
 };
 
-describe("node.js parser tests", function() {
-    Object.keys(parseTests).forEach(function(key){
-        specify(key, function() {
-            var a = url.parse(key);
+Object.keys(parseTests).forEach(function testUrl(u) {
+    test('parse ' + u, function(assert) {
+        var a = url.parse(u);
 
-            var vals = parseTests[key];
+        var vals = parseTests[u];
 
-            Object.keys(vals).forEach(function(valkey) {
-                try {
-                    assert.equal(a[valkey], vals[valkey]);
-                }
-                catch(e) {
-                    console.error(JSON.stringify(a, null, "    "));
-                    console.error(valkey);
-                    console.error(key);
-                    throw e;
-                }
-            });
+        Object.keys(vals).forEach(function(valkey) {
+            assert.strictEqual(a[valkey], vals[valkey]);
         });
+
+        assert.end();
     });
-})
+});
+
 
 // some extra formatting tests, just to verify
 // that it'll format slightly wonky content to a valid url.
@@ -974,77 +966,60 @@ var formatTests = {
 
   // `#`,`?` in path
   '/path/to/%%23%3F+=&.txt?foo=theA1#bar' : {
-    href : '/path/to/%%23%3F+=&.txt?foo=theA1#bar',
-    pathname: '/path/to/%#?+=&.txt',
-    query: {
-      foo: 'theA1'
+    'href' : '/path/to/%%23%3F+=&.txt?foo=theA1#bar',
+    'pathname': '/path/to/%#?+=&.txt',
+    'query': {
+      'foo': 'theA1'
     },
-    hash: "#bar"
+    'hash': "#bar"
   },
 
   // `#`,`?` in path + `#` in query
   '/path/to/%%23%3F+=&.txt?foo=the%231#bar' : {
-    href : '/path/to/%%23%3F+=&.txt?foo=the%231#bar',
-    pathname: '/path/to/%#?+=&.txt',
-    query: {
-      foo: 'the#1'
+    'href' : '/path/to/%%23%3F+=&.txt?foo=the%231#bar',
+    'pathname': '/path/to/%#?+=&.txt',
+    'query': {
+      'foo': 'the#1'
     },
-    hash: "#bar"
+    'hash': '#bar'
   },
 
   // `?` and `#` in path and search
   'http://ex.com/foo%3F100%m%23r?abc=the%231?&foo=bar#frag': {
-    href: 'http://ex.com/foo%3F100%m%23r?abc=the%231?&foo=bar#frag',
-    protocol: 'http:',
-    hostname: 'ex.com',
-    hash: '#frag',
-    search: '?abc=the#1?&foo=bar',
-    pathname: '/foo?100%m#r',
+    'href': 'http://ex.com/foo%3F100%m%23r?abc=the%231?&foo=bar#frag',
+    'protocol': 'http:',
+    'hostname': 'ex.com',
+    'hash': '#frag',
+    'search': '?abc=the#1?&foo=bar',
+    'pathname': '/foo?100%m#r',
   },
 
   // `?` and `#` in search only
   'http://ex.com/fooA100%mBr?abc=the%231?&foo=bar#frag': {
-    href: 'http://ex.com/fooA100%mBr?abc=the%231?&foo=bar#frag',
-    protocol: 'http:',
-    hostname: 'ex.com',
-    hash: '#frag',
-    search: '?abc=the#1?&foo=bar',
-    pathname: '/fooA100%mBr',
+    'href': 'http://ex.com/fooA100%mBr?abc=the%231?&foo=bar#frag',
+    'protocol': 'http:',
+    'hostname': 'ex.com',
+    'hash': '#frag',
+    'search': '?abc=the#1?&foo=bar',
+    'pathname': '/fooA100%mBr',
   }
 };
 
-function ftest(u) {
-    return function () {
+
+Object.keys(formatTests).forEach(function (u) {
+    test('format url ' + u, function (assert) {
         var expect = formatTests[u].href;
         delete formatTests[u].href;
         var actual = url.format(u);
         var actualObj = url.format(formatTests[u]);
+
         assert.equal(actual, expect);
         assert.equal(actualObj, expect);
-    }
-}
 
-describe("node.js format tests", function(){
-    for (var u in formatTests) {
-        specify(u, ftest(u));
-    }
+        assert.end();
+    });
 });
 
-function qstest(u) {
-    return function() {
-      var actual = url.parse(u, true);
-      var expected = parseTestsWithQueryString[u];
-      for (var i in actual) {
-        if (actual[i] === null && expected[i] === undefined) {
-          expected[i] = null;
-        }
-      }
-
-      for (var key in expected) {
-        assert.deepEqual(expected[key], actual[key]);
-      }
-    };
-}
 
 var parseTestsWithQueryString = {
   '/foo/bar?baz=quux#frag' : {
@@ -1070,10 +1045,22 @@ var parseTestsWithQueryString = {
   }
 };
 
-describe("node.js querystring tests", function(){
-    for (var u in parseTestsWithQueryString) {
-        specify(u, qstest(u));
-    }
+Object.keys(parseTestsWithQueryString).forEach(function (u) {
+    test('parse without query' + u, function t(assert) {
+        var actual = url.parse(u, true);
+        var expected = parseTestsWithQueryString[u];
+        for (var i in actual) {
+            if (actual[i] === null && expected[i] === undefined) {
+              expected[i] = null;
+            }
+        }
+
+        for (var key in expected) {
+            assert.deepEqual(expected[key], actual[key]);
+        }
+
+        assert.end();
+    });
 });
 
 var relativeTests = [
@@ -1113,19 +1100,20 @@ var relativeTests = [
   ['/foo/bar/baz', '/../etc/passwd', '/etc/passwd']
 ];
 
-describe("node.js relative tests", function(){
-    relativeTests.forEach(function(relativeTest) {
-      specify(relativeTest[2], function(){
-          var a = url.resolve(relativeTest[0], relativeTest[1]),
-              e = relativeTest[2];
 
-              assert.equal(a, e);
-          });
+
+relativeTests.forEach(function(relativeTest) {
+    test('resolve relative ' + relativeTest[2], function t(assert){
+        var actual = url.resolve(relativeTest[0], relativeTest[1]);
+        var expected = relativeTest[2];
+
+          assert.strictEqual(actual, expected);
+
+          assert.end();
       });
 });
 
-describe("node.js typeError test", function() {
-  [
+[
     undefined,
     null,
     true,
@@ -1134,11 +1122,11 @@ describe("node.js typeError test", function() {
     0,
     [],
     {}
-  ].forEach(function(val) {
-    specify(val + "", function(){
-      assert.throws(function() { url.parse(val); }, TypeError);
+].forEach(function(val) {
+    test(val + '', function t(assert){
+        assert.throws(function() { url.parse(val); }, TypeError);
+        assert.end();
     });
-  });
 });
 
 //
@@ -1160,284 +1148,284 @@ var bases = [
 
 //[to, from, result]
 var relativeTests2 = [
-  // http://lists.w3.org/Archives/Public/uri/2004Feb/0114.html
-  ['../c', 'foo:a/b', 'foo:c'],
-  ['foo:.', 'foo:a', 'foo:'],
-  ['/foo/../../../bar', 'zz:abc', 'zz:/bar'],
-  ['/foo/../bar', 'zz:abc', 'zz:/bar'],
-  // @isaacs Disagree. Not how web browsers resolve this.
-  ['foo/../../../bar', 'zz:abc', 'zz:bar'],
-  // ['foo/../../../bar',  'zz:abc', 'zz:../../bar'], // @isaacs Added
-  ['foo/../bar', 'zz:abc', 'zz:bar'],
-  ['zz:.', 'zz:abc', 'zz:'],
-  ['/.', bases[0], 'http://a/'],
-  ['/.foo', bases[0], 'http://a/.foo'],
-  ['.foo', bases[0], 'http://a/b/c/.foo'],
+    // http://lists.w3.org/Archives/Public/uri/2004Feb/0114.html
+    ['../c', 'foo:a/b', 'foo:c'],
+    ['foo:.', 'foo:a', 'foo:'],
+    ['/foo/../../../bar', 'zz:abc', 'zz:/bar'],
+    ['/foo/../bar', 'zz:abc', 'zz:/bar'],
+    // @isaacs Disagree. Not how web browsers resolve this.
+    ['foo/../../../bar', 'zz:abc', 'zz:bar'],
+    // ['foo/../../../bar',  'zz:abc', 'zz:../../bar'], // @isaacs Added
+    ['foo/../bar', 'zz:abc', 'zz:bar'],
+    ['zz:.', 'zz:abc', 'zz:'],
+    ['/.', bases[0], 'http://a/'],
+    ['/.foo', bases[0], 'http://a/.foo'],
+    ['.foo', bases[0], 'http://a/b/c/.foo'],
 
-  // http://gbiv.com/protocols/uri/test/rel_examples1.html
-  // examples from RFC 2396
-  ['g:h', bases[0], 'g:h'],
-  ['g', bases[0], 'http://a/b/c/g'],
-  ['./g', bases[0], 'http://a/b/c/g'],
-  ['g/', bases[0], 'http://a/b/c/g/'],
-  ['/g', bases[0], 'http://a/g'],
-  ['//g', bases[0], 'http://g/'],
-  // changed with RFC 2396bis
-  //('?y', bases[0], 'http://a/b/c/d;p?y'],
-  ['?y', bases[0], 'http://a/b/c/d;p?y'],
-  ['g?y', bases[0], 'http://a/b/c/g?y'],
-  // changed with RFC 2396bis
-  //('#s', bases[0], CURRENT_DOC_URI + '#s'],
-  ['#s', bases[0], 'http://a/b/c/d;p?q#s'],
-  ['g#s', bases[0], 'http://a/b/c/g#s'],
-  ['g?y#s', bases[0], 'http://a/b/c/g?y#s'],
-  [';x', bases[0], 'http://a/b/c/;x'],
-  ['g;x', bases[0], 'http://a/b/c/g;x'],
-  ['g;x?y#s' , bases[0], 'http://a/b/c/g;x?y#s'],
-  // changed with RFC 2396bis
-  //('', bases[0], CURRENT_DOC_URI],
-  ['', bases[0], 'http://a/b/c/d;p?q'],
-  ['.', bases[0], 'http://a/b/c/'],
-  ['./', bases[0], 'http://a/b/c/'],
-  ['..', bases[0], 'http://a/b/'],
-  ['../', bases[0], 'http://a/b/'],
-  ['../g', bases[0], 'http://a/b/g'],
-  ['../..', bases[0], 'http://a/'],
-  ['../../', bases[0], 'http://a/'],
-  ['../../g' , bases[0], 'http://a/g'],
-  ['../../../g', bases[0], ('http://a/../g', 'http://a/g')],
-  ['../../../../g', bases[0], ('http://a/../../g', 'http://a/g')],
-  // changed with RFC 2396bis
-  //('/./g', bases[0], 'http://a/./g'],
-  ['/./g', bases[0], 'http://a/g'],
-  // changed with RFC 2396bis
-  //('/../g', bases[0], 'http://a/../g'],
-  ['/../g', bases[0], 'http://a/g'],
-  ['g.', bases[0], 'http://a/b/c/g.'],
-  ['.g', bases[0], 'http://a/b/c/.g'],
-  ['g..', bases[0], 'http://a/b/c/g..'],
-  ['..g', bases[0], 'http://a/b/c/..g'],
-  ['./../g', bases[0], 'http://a/b/g'],
-  ['./g/.', bases[0], 'http://a/b/c/g/'],
-  ['g/./h', bases[0], 'http://a/b/c/g/h'],
-  ['g/../h', bases[0], 'http://a/b/c/h'],
-  ['g;x=1/./y', bases[0], 'http://a/b/c/g;x=1/y'],
-  ['g;x=1/../y', bases[0], 'http://a/b/c/y'],
-  ['g?y/./x', bases[0], 'http://a/b/c/g?y/./x'],
-  ['g?y/../x', bases[0], 'http://a/b/c/g?y/../x'],
-  ['g#s/./x', bases[0], 'http://a/b/c/g#s/./x'],
-  ['g#s/../x', bases[0], 'http://a/b/c/g#s/../x'],
-  ['http:g', bases[0], ('http:g', 'http://a/b/c/g')],
-  ['http:', bases[0], ('http:', bases[0])],
-  // not sure where this one originated
-  ['/a/b/c/./../../g', bases[0], 'http://a/a/g'],
+    // http://gbiv.com/protocols/uri/test/rel_examples1.html
+    // examples from RFC 2396
+    ['g:h', bases[0], 'g:h'],
+    ['g', bases[0], 'http://a/b/c/g'],
+    ['./g', bases[0], 'http://a/b/c/g'],
+    ['g/', bases[0], 'http://a/b/c/g/'],
+    ['/g', bases[0], 'http://a/g'],
+    ['//g', bases[0], 'http://g/'],
+    // changed with RFC 2396bis
+    //('?y', bases[0], 'http://a/b/c/d;p?y'],
+    ['?y', bases[0], 'http://a/b/c/d;p?y'],
+    ['g?y', bases[0], 'http://a/b/c/g?y'],
+    // changed with RFC 2396bis
+    //('#s', bases[0], CURRENT_DOC_URI + '#s'],
+    ['#s', bases[0], 'http://a/b/c/d;p?q#s'],
+    ['g#s', bases[0], 'http://a/b/c/g#s'],
+    ['g?y#s', bases[0], 'http://a/b/c/g?y#s'],
+    [';x', bases[0], 'http://a/b/c/;x'],
+    ['g;x', bases[0], 'http://a/b/c/g;x'],
+    ['g;x?y#s' , bases[0], 'http://a/b/c/g;x?y#s'],
+    // changed with RFC 2396bis
+    //('', bases[0], CURRENT_DOC_URI],
+    ['', bases[0], 'http://a/b/c/d;p?q'],
+    ['.', bases[0], 'http://a/b/c/'],
+    ['./', bases[0], 'http://a/b/c/'],
+    ['..', bases[0], 'http://a/b/'],
+    ['../', bases[0], 'http://a/b/'],
+    ['../g', bases[0], 'http://a/b/g'],
+    ['../..', bases[0], 'http://a/'],
+    ['../../', bases[0], 'http://a/'],
+    ['../../g' , bases[0], 'http://a/g'],
+    ['../../../g', bases[0], ('http://a/../g', 'http://a/g')],
+    ['../../../../g', bases[0], ('http://a/../../g', 'http://a/g')],
+    // changed with RFC 2396bis
+    //('/./g', bases[0], 'http://a/./g'],
+    ['/./g', bases[0], 'http://a/g'],
+    // changed with RFC 2396bis
+    //('/../g', bases[0], 'http://a/../g'],
+    ['/../g', bases[0], 'http://a/g'],
+    ['g.', bases[0], 'http://a/b/c/g.'],
+    ['.g', bases[0], 'http://a/b/c/.g'],
+    ['g..', bases[0], 'http://a/b/c/g..'],
+    ['..g', bases[0], 'http://a/b/c/..g'],
+    ['./../g', bases[0], 'http://a/b/g'],
+    ['./g/.', bases[0], 'http://a/b/c/g/'],
+    ['g/./h', bases[0], 'http://a/b/c/g/h'],
+    ['g/../h', bases[0], 'http://a/b/c/h'],
+    ['g;x=1/./y', bases[0], 'http://a/b/c/g;x=1/y'],
+    ['g;x=1/../y', bases[0], 'http://a/b/c/y'],
+    ['g?y/./x', bases[0], 'http://a/b/c/g?y/./x'],
+    ['g?y/../x', bases[0], 'http://a/b/c/g?y/../x'],
+    ['g#s/./x', bases[0], 'http://a/b/c/g#s/./x'],
+    ['g#s/../x', bases[0], 'http://a/b/c/g#s/../x'],
+    ['http:g', bases[0], ('http:g', 'http://a/b/c/g')],
+    ['http:', bases[0], ('http:', bases[0])],
+    // not sure where this one originated
+    ['/a/b/c/./../../g', bases[0], 'http://a/a/g'],
 
-  // http://gbiv.com/protocols/uri/test/rel_examples2.html
-  // slashes in base URI's query args
-  ['g', bases[1], 'http://a/b/c/g'],
-  ['./g', bases[1], 'http://a/b/c/g'],
-  ['g/', bases[1], 'http://a/b/c/g/'],
-  ['/g', bases[1], 'http://a/g'],
-  ['//g', bases[1], 'http://g/'],
-  // changed in RFC 2396bis
-  //('?y', bases[1], 'http://a/b/c/?y'],
-  ['?y', bases[1], 'http://a/b/c/d;p?y'],
-  ['g?y', bases[1], 'http://a/b/c/g?y'],
-  ['g?y/./x' , bases[1], 'http://a/b/c/g?y/./x'],
-  ['g?y/../x', bases[1], 'http://a/b/c/g?y/../x'],
-  ['g#s', bases[1], 'http://a/b/c/g#s'],
-  ['g#s/./x' , bases[1], 'http://a/b/c/g#s/./x'],
-  ['g#s/../x', bases[1], 'http://a/b/c/g#s/../x'],
-  ['./', bases[1], 'http://a/b/c/'],
-  ['../', bases[1], 'http://a/b/'],
-  ['../g', bases[1], 'http://a/b/g'],
-  ['../../', bases[1], 'http://a/'],
-  ['../../g' , bases[1], 'http://a/g'],
+    // http://gbiv.com/protocols/uri/test/rel_examples2.html
+    // slashes in base URI's query args
+    ['g', bases[1], 'http://a/b/c/g'],
+    ['./g', bases[1], 'http://a/b/c/g'],
+    ['g/', bases[1], 'http://a/b/c/g/'],
+    ['/g', bases[1], 'http://a/g'],
+    ['//g', bases[1], 'http://g/'],
+    // changed in RFC 2396bis
+    //('?y', bases[1], 'http://a/b/c/?y'],
+    ['?y', bases[1], 'http://a/b/c/d;p?y'],
+    ['g?y', bases[1], 'http://a/b/c/g?y'],
+    ['g?y/./x' , bases[1], 'http://a/b/c/g?y/./x'],
+    ['g?y/../x', bases[1], 'http://a/b/c/g?y/../x'],
+    ['g#s', bases[1], 'http://a/b/c/g#s'],
+    ['g#s/./x' , bases[1], 'http://a/b/c/g#s/./x'],
+    ['g#s/../x', bases[1], 'http://a/b/c/g#s/../x'],
+    ['./', bases[1], 'http://a/b/c/'],
+    ['../', bases[1], 'http://a/b/'],
+    ['../g', bases[1], 'http://a/b/g'],
+    ['../../', bases[1], 'http://a/'],
+    ['../../g' , bases[1], 'http://a/g'],
 
-  // http://gbiv.com/protocols/uri/test/rel_examples3.html
-  // slashes in path params
-  // all of these changed in RFC 2396bis
-  ['g', bases[2], 'http://a/b/c/d;p=1/g'],
-  ['./g', bases[2], 'http://a/b/c/d;p=1/g'],
-  ['g/', bases[2], 'http://a/b/c/d;p=1/g/'],
-  ['g?y', bases[2], 'http://a/b/c/d;p=1/g?y'],
-  [';x', bases[2], 'http://a/b/c/d;p=1/;x'],
-  ['g;x', bases[2], 'http://a/b/c/d;p=1/g;x'],
-  ['g;x=1/./y', bases[2], 'http://a/b/c/d;p=1/g;x=1/y'],
-  ['g;x=1/../y', bases[2], 'http://a/b/c/d;p=1/y'],
-  ['./', bases[2], 'http://a/b/c/d;p=1/'],
-  ['../', bases[2], 'http://a/b/c/'],
-  ['../g', bases[2], 'http://a/b/c/g'],
-  ['../../', bases[2], 'http://a/b/'],
-  ['../../g' , bases[2], 'http://a/b/g'],
+    // http://gbiv.com/protocols/uri/test/rel_examples3.html
+    // slashes in path params
+    // all of these changed in RFC 2396bis
+    ['g', bases[2], 'http://a/b/c/d;p=1/g'],
+    ['./g', bases[2], 'http://a/b/c/d;p=1/g'],
+    ['g/', bases[2], 'http://a/b/c/d;p=1/g/'],
+    ['g?y', bases[2], 'http://a/b/c/d;p=1/g?y'],
+    [';x', bases[2], 'http://a/b/c/d;p=1/;x'],
+    ['g;x', bases[2], 'http://a/b/c/d;p=1/g;x'],
+    ['g;x=1/./y', bases[2], 'http://a/b/c/d;p=1/g;x=1/y'],
+    ['g;x=1/../y', bases[2], 'http://a/b/c/d;p=1/y'],
+    ['./', bases[2], 'http://a/b/c/d;p=1/'],
+    ['../', bases[2], 'http://a/b/c/'],
+    ['../g', bases[2], 'http://a/b/c/g'],
+    ['../../', bases[2], 'http://a/b/'],
+    ['../../g' , bases[2], 'http://a/b/g'],
 
-  // http://gbiv.com/protocols/uri/test/rel_examples4.html
-  // double and triple slash, unknown scheme
-  ['g:h', bases[3], 'g:h'],
-  ['g', bases[3], 'fred:///s//a/b/g'],
-  ['./g', bases[3], 'fred:///s//a/b/g'],
-  ['g/', bases[3], 'fred:///s//a/b/g/'],
-  ['/g', bases[3], 'fred:///g'],  // may change to fred:///s//a/g
-  ['//g', bases[3], 'fred://g'],   // may change to fred:///s//g
-  ['//g/x', bases[3], 'fred://g/x'], // may change to fred:///s//g/x
-  ['///g', bases[3], 'fred:///g'],
-  ['./', bases[3], 'fred:///s//a/b/'],
-  ['../', bases[3], 'fred:///s//a/'],
-  ['../g', bases[3], 'fred:///s//a/g'],
+    // http://gbiv.com/protocols/uri/test/rel_examples4.html
+    // double and triple slash, unknown scheme
+    ['g:h', bases[3], 'g:h'],
+    ['g', bases[3], 'fred:///s//a/b/g'],
+    ['./g', bases[3], 'fred:///s//a/b/g'],
+    ['g/', bases[3], 'fred:///s//a/b/g/'],
+    ['/g', bases[3], 'fred:///g'],  // may change to fred:///s//a/g
+    ['//g', bases[3], 'fred://g'],   // may change to fred:///s//g
+    ['//g/x', bases[3], 'fred://g/x'], // may change to fred:///s//g/x
+    ['///g', bases[3], 'fred:///g'],
+    ['./', bases[3], 'fred:///s//a/b/'],
+    ['../', bases[3], 'fred:///s//a/'],
+    ['../g', bases[3], 'fred:///s//a/g'],
 
-  ['../../', bases[3], 'fred:///s//'],
-  ['../../g' , bases[3], 'fred:///s//g'],
-  ['../../../g', bases[3], 'fred:///s/g'],
-  // may change to fred:///s//a/../../../g
-  ['../../../../g', bases[3], 'fred:///g'],
+    ['../../', bases[3], 'fred:///s//'],
+    ['../../g' , bases[3], 'fred:///s//g'],
+    ['../../../g', bases[3], 'fred:///s/g'],
+    // may change to fred:///s//a/../../../g
+    ['../../../../g', bases[3], 'fred:///g'],
 
-  // http://gbiv.com/protocols/uri/test/rel_examples5.html
-  // double and triple slash, well-known scheme
-  ['g:h', bases[4], 'g:h'],
-  ['g', bases[4], 'http:///s//a/b/g'],
-  ['./g', bases[4], 'http:///s//a/b/g'],
-  ['g/', bases[4], 'http:///s//a/b/g/'],
-  ['/g', bases[4], 'http:///g'],  // may change to http:///s//a/g
-  ['//g', bases[4], 'http://g/'],   // may change to http:///s//g
-  ['//g/x', bases[4], 'http://g/x'], // may change to http:///s//g/x
-  ['///g', bases[4], 'http:///g'],
-  ['./', bases[4], 'http:///s//a/b/'],
-  ['../', bases[4], 'http:///s//a/'],
-  ['../g', bases[4], 'http:///s//a/g'],
-  ['../../', bases[4], 'http:///s//'],
-  ['../../g' , bases[4], 'http:///s//g'],
-  // may change to http:///s//a/../../g
-  ['../../../g', bases[4], 'http:///s/g'],
-  // may change to http:///s//a/../../../g
-  ['../../../../g', bases[4], 'http:///g'],
+    // http://gbiv.com/protocols/uri/test/rel_examples5.html
+    // double and triple slash, well-known scheme
+    ['g:h', bases[4], 'g:h'],
+    ['g', bases[4], 'http:///s//a/b/g'],
+    ['./g', bases[4], 'http:///s//a/b/g'],
+    ['g/', bases[4], 'http:///s//a/b/g/'],
+    ['/g', bases[4], 'http:///g'],  // may change to http:///s//a/g
+    ['//g', bases[4], 'http://g/'],   // may change to http:///s//g
+    ['//g/x', bases[4], 'http://g/x'], // may change to http:///s//g/x
+    ['///g', bases[4], 'http:///g'],
+    ['./', bases[4], 'http:///s//a/b/'],
+    ['../', bases[4], 'http:///s//a/'],
+    ['../g', bases[4], 'http:///s//a/g'],
+    ['../../', bases[4], 'http:///s//'],
+    ['../../g' , bases[4], 'http:///s//g'],
+    // may change to http:///s//a/../../g
+    ['../../../g', bases[4], 'http:///s/g'],
+    // may change to http:///s//a/../../../g
+    ['../../../../g', bases[4], 'http:///g'],
 
-  // from Dan Connelly's tests in http://www.w3.org/2000/10/swap/uripath.py
-  ['bar:abc', 'foo:xyz', 'bar:abc'],
-  ['../abc', 'http://example/x/y/z', 'http://example/x/abc'],
-  ['http://example/x/abc', 'http://example2/x/y/z', 'http://example/x/abc'],
-  ['../r', 'http://ex/x/y/z', 'http://ex/x/r'],
-  ['q/r', 'http://ex/x/y', 'http://ex/x/q/r'],
-  ['q/r#s', 'http://ex/x/y', 'http://ex/x/q/r#s'],
-  ['q/r#s/t', 'http://ex/x/y', 'http://ex/x/q/r#s/t'],
-  ['ftp://ex/x/q/r', 'http://ex/x/y', 'ftp://ex/x/q/r'],
-  ['', 'http://ex/x/y', 'http://ex/x/y'],
-  ['', 'http://ex/x/y/', 'http://ex/x/y/'],
-  ['', 'http://ex/x/y/pdq', 'http://ex/x/y/pdq'],
-  ['z/', 'http://ex/x/y/', 'http://ex/x/y/z/'],
-  ['#Animal',
-   'file:/swap/test/animal.rdf',
-   'file:/swap/test/animal.rdf#Animal'],
-  ['../abc', 'file:/e/x/y/z', 'file:/e/x/abc'],
-  ['/example/x/abc', 'file:/example2/x/y/z', 'file:/example/x/abc'],
-  ['../r', 'file:/ex/x/y/z', 'file:/ex/x/r'],
-  ['/r', 'file:/ex/x/y/z', 'file:/r'],
-  ['q/r', 'file:/ex/x/y', 'file:/ex/x/q/r'],
-  ['q/r#s', 'file:/ex/x/y', 'file:/ex/x/q/r#s'],
-  ['q/r#', 'file:/ex/x/y', 'file:/ex/x/q/r#'],
-  ['q/r#s/t', 'file:/ex/x/y', 'file:/ex/x/q/r#s/t'],
-  ['ftp://ex/x/q/r', 'file:/ex/x/y', 'ftp://ex/x/q/r'],
-  ['', 'file:/ex/x/y', 'file:/ex/x/y'],
-  ['', 'file:/ex/x/y/', 'file:/ex/x/y/'],
-  ['', 'file:/ex/x/y/pdq', 'file:/ex/x/y/pdq'],
-  ['z/', 'file:/ex/x/y/', 'file:/ex/x/y/z/'],
-  ['file://meetings.example.com/cal#m1',
-   'file:/devel/WWW/2000/10/swap/test/reluri-1.n3',
-   'file://meetings.example.com/cal#m1'],
-  ['file://meetings.example.com/cal#m1',
-   'file:/home/connolly/w3ccvs/WWW/2000/10/swap/test/reluri-1.n3',
-   'file://meetings.example.com/cal#m1'],
-  ['./#blort', 'file:/some/dir/foo', 'file:/some/dir/#blort'],
-  ['./#', 'file:/some/dir/foo', 'file:/some/dir/#'],
-  // Ryan Lee
-  ['./', 'http://example/x/abc.efg', 'http://example/x/'],
+    // from Dan Connelly's tests in http://www.w3.org/2000/10/swap/uripath.py
+    ['bar:abc', 'foo:xyz', 'bar:abc'],
+    ['../abc', 'http://example/x/y/z', 'http://example/x/abc'],
+    ['http://example/x/abc', 'http://example2/x/y/z', 'http://example/x/abc'],
+    ['../r', 'http://ex/x/y/z', 'http://ex/x/r'],
+    ['q/r', 'http://ex/x/y', 'http://ex/x/q/r'],
+    ['q/r#s', 'http://ex/x/y', 'http://ex/x/q/r#s'],
+    ['q/r#s/t', 'http://ex/x/y', 'http://ex/x/q/r#s/t'],
+    ['ftp://ex/x/q/r', 'http://ex/x/y', 'ftp://ex/x/q/r'],
+    ['', 'http://ex/x/y', 'http://ex/x/y'],
+    ['', 'http://ex/x/y/', 'http://ex/x/y/'],
+    ['', 'http://ex/x/y/pdq', 'http://ex/x/y/pdq'],
+    ['z/', 'http://ex/x/y/', 'http://ex/x/y/z/'],
+    ['#Animal',
+    'file:/swap/test/animal.rdf',
+    'file:/swap/test/animal.rdf#Animal'],
+    ['../abc', 'file:/e/x/y/z', 'file:/e/x/abc'],
+    ['/example/x/abc', 'file:/example2/x/y/z', 'file:/example/x/abc'],
+    ['../r', 'file:/ex/x/y/z', 'file:/ex/x/r'],
+    ['/r', 'file:/ex/x/y/z', 'file:/r'],
+    ['q/r', 'file:/ex/x/y', 'file:/ex/x/q/r'],
+    ['q/r#s', 'file:/ex/x/y', 'file:/ex/x/q/r#s'],
+    ['q/r#', 'file:/ex/x/y', 'file:/ex/x/q/r#'],
+    ['q/r#s/t', 'file:/ex/x/y', 'file:/ex/x/q/r#s/t'],
+    ['ftp://ex/x/q/r', 'file:/ex/x/y', 'ftp://ex/x/q/r'],
+    ['', 'file:/ex/x/y', 'file:/ex/x/y'],
+    ['', 'file:/ex/x/y/', 'file:/ex/x/y/'],
+    ['', 'file:/ex/x/y/pdq', 'file:/ex/x/y/pdq'],
+    ['z/', 'file:/ex/x/y/', 'file:/ex/x/y/z/'],
+    ['file://meetings.example.com/cal#m1',
+    'file:/devel/WWW/2000/10/swap/test/reluri-1.n3',
+    'file://meetings.example.com/cal#m1'],
+    ['file://meetings.example.com/cal#m1',
+    'file:/home/connolly/w3ccvs/WWW/2000/10/swap/test/reluri-1.n3',
+    'file://meetings.example.com/cal#m1'],
+    ['./#blort', 'file:/some/dir/foo', 'file:/some/dir/#blort'],
+    ['./#', 'file:/some/dir/foo', 'file:/some/dir/#'],
+    // Ryan Lee
+    ['./', 'http://example/x/abc.efg', 'http://example/x/'],
 
 
-  // Graham Klyne's tests
-  // http://www.ninebynine.org/Software/HaskellUtils/Network/UriTest.xls
-  // 01-31 are from Connelly's cases
+    // Graham Klyne's tests
+    // http://www.ninebynine.org/Software/HaskellUtils/Network/UriTest.xls
+    // 01-31 are from Connelly's cases
 
-  // 32-49
-  ['./q:r', 'http://ex/x/y', 'http://ex/x/q:r'],
-  ['./p=q:r', 'http://ex/x/y', 'http://ex/x/p=q:r'],
-  ['?pp/rr', 'http://ex/x/y?pp/qq', 'http://ex/x/y?pp/rr'],
-  ['y/z', 'http://ex/x/y?pp/qq', 'http://ex/x/y/z'],
-  ['local/qual@domain.org#frag',
-   'mailto:local',
-   'mailto:local/qual@domain.org#frag'],
-  ['more/qual2@domain2.org#frag',
-   'mailto:local/qual1@domain1.org',
-   'mailto:local/more/qual2@domain2.org#frag'],
-  ['y?q', 'http://ex/x/y?q', 'http://ex/x/y?q'],
-  ['/x/y?q', 'http://ex?p', 'http://ex/x/y?q'],
-  ['c/d', 'foo:a/b', 'foo:a/c/d'],
-  ['/c/d', 'foo:a/b', 'foo:/c/d'],
-  ['', 'foo:a/b?c#d', 'foo:a/b?c'],
-  ['b/c', 'foo:a', 'foo:b/c'],
-  ['../b/c', 'foo:/a/y/z', 'foo:/a/b/c'],
-  ['./b/c', 'foo:a', 'foo:b/c'],
-  ['/./b/c', 'foo:a', 'foo:/b/c'],
-  ['../../d', 'foo://a//b/c', 'foo://a/d'],
-  ['.', 'foo:a', 'foo:'],
-  ['..', 'foo:a', 'foo:'],
+    // 32-49
+    ['./q:r', 'http://ex/x/y', 'http://ex/x/q:r'],
+    ['./p=q:r', 'http://ex/x/y', 'http://ex/x/p=q:r'],
+    ['?pp/rr', 'http://ex/x/y?pp/qq', 'http://ex/x/y?pp/rr'],
+    ['y/z', 'http://ex/x/y?pp/qq', 'http://ex/x/y/z'],
+    ['local/qual@domain.org#frag',
+    'mailto:local',
+    'mailto:local/qual@domain.org#frag'],
+    ['more/qual2@domain2.org#frag',
+    'mailto:local/qual1@domain1.org',
+    'mailto:local/more/qual2@domain2.org#frag'],
+    ['y?q', 'http://ex/x/y?q', 'http://ex/x/y?q'],
+    ['/x/y?q', 'http://ex?p', 'http://ex/x/y?q'],
+    ['c/d', 'foo:a/b', 'foo:a/c/d'],
+    ['/c/d', 'foo:a/b', 'foo:/c/d'],
+    ['', 'foo:a/b?c#d', 'foo:a/b?c'],
+    ['b/c', 'foo:a', 'foo:b/c'],
+    ['../b/c', 'foo:/a/y/z', 'foo:/a/b/c'],
+    ['./b/c', 'foo:a', 'foo:b/c'],
+    ['/./b/c', 'foo:a', 'foo:/b/c'],
+    ['../../d', 'foo://a//b/c', 'foo://a/d'],
+    ['.', 'foo:a', 'foo:'],
+    ['..', 'foo:a', 'foo:'],
 
-  // 50-57[cf. TimBL comments --
-  //  http://lists.w3.org/Archives/Public/uri/2003Feb/0028.html,
-  //  http://lists.w3.org/Archives/Public/uri/2003Jan/0008.html)
-  ['abc', 'http://example/x/y%2Fz', 'http://example/x/abc'],
-  ['../../x%2Fabc', 'http://example/a/x/y/z', 'http://example/a/x%2Fabc'],
-  ['../x%2Fabc', 'http://example/a/x/y%2Fz', 'http://example/a/x%2Fabc'],
-  ['abc', 'http://example/x%2Fy/z', 'http://example/x%2Fy/abc'],
-  ['q%3Ar', 'http://ex/x/y', 'http://ex/x/q%3Ar'],
-  ['/x%2Fabc', 'http://example/x/y%2Fz', 'http://example/x%2Fabc'],
-  ['/x%2Fabc', 'http://example/x/y/z', 'http://example/x%2Fabc'],
-  ['/x%2Fabc', 'http://example/x/y%2Fz', 'http://example/x%2Fabc'],
+    // 50-57[cf. TimBL comments --
+    //  http://lists.w3.org/Archives/Public/uri/2003Feb/0028.html,
+    //  http://lists.w3.org/Archives/Public/uri/2003Jan/0008.html)
+    ['abc', 'http://example/x/y%2Fz', 'http://example/x/abc'],
+    ['../../x%2Fabc', 'http://example/a/x/y/z', 'http://example/a/x%2Fabc'],
+    ['../x%2Fabc', 'http://example/a/x/y%2Fz', 'http://example/a/x%2Fabc'],
+    ['abc', 'http://example/x%2Fy/z', 'http://example/x%2Fy/abc'],
+    ['q%3Ar', 'http://ex/x/y', 'http://ex/x/q%3Ar'],
+    ['/x%2Fabc', 'http://example/x/y%2Fz', 'http://example/x%2Fabc'],
+    ['/x%2Fabc', 'http://example/x/y/z', 'http://example/x%2Fabc'],
+    ['/x%2Fabc', 'http://example/x/y%2Fz', 'http://example/x%2Fabc'],
 
-  // 70-77
-  ['local2@domain2', 'mailto:local1@domain1?query1', 'mailto:local2@domain2'],
-  ['local2@domain2?query2',
-   'mailto:local1@domain1',
-   'mailto:local2@domain2?query2'],
-  ['local2@domain2?query2',
-   'mailto:local1@domain1?query1',
-   'mailto:local2@domain2?query2'],
-  ['?query2', 'mailto:local@domain?query1', 'mailto:local@domain?query2'],
-  ['local@domain?query2', 'mailto:?query1', 'mailto:local@domain?query2'],
-  ['?query2', 'mailto:local@domain?query1', 'mailto:local@domain?query2'],
-  ['http://example/a/b?c/../d', 'foo:bar', 'http://example/a/b?c/../d'],
-  ['http://example/a/b#c/../d', 'foo:bar', 'http://example/a/b#c/../d'],
+    // 70-77
+    ['local2@domain2', 'mailto:local1@domain1?query1', 'mailto:local2@domain2'],
+    ['local2@domain2?query2',
+    'mailto:local1@domain1',
+    'mailto:local2@domain2?query2'],
+    ['local2@domain2?query2',
+    'mailto:local1@domain1?query1',
+    'mailto:local2@domain2?query2'],
+    ['?query2', 'mailto:local@domain?query1', 'mailto:local@domain?query2'],
+    ['local@domain?query2', 'mailto:?query1', 'mailto:local@domain?query2'],
+    ['?query2', 'mailto:local@domain?query1', 'mailto:local@domain?query2'],
+    ['http://example/a/b?c/../d', 'foo:bar', 'http://example/a/b?c/../d'],
+    ['http://example/a/b#c/../d', 'foo:bar', 'http://example/a/b#c/../d'],
 
-  // 82-88
-  // @isaacs Disagree. Not how browsers do it.
-  // ['http:this', 'http://example.org/base/uri', 'http:this'],
-  // @isaacs Added
-  ['http:this', 'http://example.org/base/uri', 'http://example.org/base/this'],
-  ['http:this', 'http:base', 'http:this'],
-  ['.//g', 'f:/a', 'f://g'],
-  ['b/c//d/e', 'f://example.org/base/a', 'f://example.org/base/b/c//d/e'],
-  ['m2@example.ord/c2@example.org',
-   'mid:m@example.ord/c@example.org',
-   'mid:m@example.ord/m2@example.ord/c2@example.org'],
-  ['mini1.xml',
-   'file:///C:/DEV/Haskell/lib/HXmlToolbox-3.01/examples/',
-   'file:///C:/DEV/Haskell/lib/HXmlToolbox-3.01/examples/mini1.xml'],
-  ['../b/c', 'foo:a/y/z', 'foo:a/b/c'],
+    // 82-88
+    // @isaacs Disagree. Not how browsers do it.
+    // ['http:this', 'http://example.org/base/uri', 'http:this'],
+    // @isaacs Added
+    ['http:this', 'http://example.org/base/uri', 'http://example.org/base/this'],
+    ['http:this', 'http:base', 'http:this'],
+    ['.//g', 'f:/a', 'f://g'],
+    ['b/c//d/e', 'f://example.org/base/a', 'f://example.org/base/b/c//d/e'],
+    ['m2@example.ord/c2@example.org',
+    'mid:m@example.ord/c@example.org',
+    'mid:m@example.ord/m2@example.ord/c2@example.org'],
+    ['mini1.xml',
+    'file:///C:/DEV/Haskell/lib/HXmlToolbox-3.01/examples/',
+    'file:///C:/DEV/Haskell/lib/HXmlToolbox-3.01/examples/mini1.xml'],
+    ['../b/c', 'foo:a/y/z', 'foo:a/b/c'],
 
-  //changeing auth
-  ['http://diff:auth@www.example.com',
-   'http://asdf:qwer@www.example.com',
-   'http://diff:auth@www.example.com/']
+    //changeing auth
+    ['http://diff:auth@www.example.com',
+    'http://asdf:qwer@www.example.com',
+    'http://diff:auth@www.example.com/']
 ];
 
 
-describe("node.js relative tests 2", function(){
-    relativeTests2.forEach(function(relativeTest, index) {
-      specify((index+1)+ ": " + relativeTest[2], function(){
-          var a = url.resolve(relativeTest[1], relativeTest[0]),
-              e = relativeTest[2];
+relativeTests2.forEach(function(relativeTest) {
+    test('resolve relative ' + relativeTest[2], function t(assert){
+        var a = url.resolve(relativeTest[1], relativeTest[0]);
+        var e = relativeTest[2];
 
-              assert.equal(a, e);
-          });
-      });
+        assert.strictEqual(a, e);
+
+        assert.end();
+    });
 });
 //if format and parse are inverse operations then
 //resolveObject(parse(x), y) == parse(resolve(x, y))
@@ -1445,59 +1433,65 @@ describe("node.js relative tests 2", function(){
 //host and hostname are special, in this case a '' value is important
 var emptyIsImportant = {'host': true, 'hostname': ''};
 
-describe("node.js resolveObject tests", function() {
-  //format: [from, path, expected]
-  relativeTests.forEach(function(relativeTest) {
-    specify(relativeTest[2], function(){
-        var actual = url.resolveObject(url.parse(relativeTest[0]), relativeTest[1]),
-            expected = url.parse(relativeTest[2]);
+//format: [from, path, expected]
+relativeTests.forEach(function(relativeTest) {
+    test(relativeTest[2], function t(assert){
+        var actual = url.resolveObject(
+            url.parse(relativeTest[0]),
+            relativeTest[1]
+        );
+        var expected = url.parse(relativeTest[2]);
 
 
         assert.deepEqual(actual, expected);
 
-        expected = relativeTest[2];
-        actual = url.format(actual);
+        var expectedUrl = relativeTest[2];
+        var actualUrl = url.format(actual);
 
-        assert.equal(actual, expected);
-      });
-  });
+        assert.strictEqual(actualUrl, expectedUrl);
+
+        assert.end();
+    });
 });
 
-describe("node.js resolveObject tests2", function() {
-  //format: [to, from, result]
-  // the test: ['.//g', 'f:/a', 'f://g'] is a fundamental problem
-  // url.parse('f:/a') does not have a host
-  // url.resolve('f:/a', './/g') does not have a host because you have moved
-  // down to the g directory.  i.e. f:     //g, however when this url is parsed
-  // f:// will indicate that the host is g which is not the case.
-  // it is unclear to me how to keep this information from being lost
-  // it may be that a pathname of ////g should collapse to /g but this seems
-  // to be a lot of work for an edge case.  Right now I remove the test
-  if (relativeTests2[181][0] === './/g' &&
-      relativeTests2[181][1] === 'f:/a' &&
-      relativeTests2[181][2] === 'f://g') {
+
+//format: [to, from, result]
+// the test: ['.//g', 'f:/a', 'f://g'] is a fundamental problem
+// url.parse('f:/a') does not have a host
+// url.resolve('f:/a', './/g') does not have a host because you have moved
+// down to the g directory.  i.e. f:     //g, however when this url is parsed
+// f:// will indicate that the host is g which is not the case.
+// it is unclear to me how to keep this information from being lost
+// it may be that a pathname of ////g should collapse to /g but this seems
+// to be a lot of work for an edge case.  Right now I remove the test
+if (relativeTests2[181][0] === './/g' &&
+    relativeTests2[181][1] === 'f:/a' &&
+    relativeTests2[181][2] === 'f://g') {
     relativeTests2.splice(181, 1);
-  }
-  relativeTests2.forEach(function(relativeTest) {
-    specify(relativeTest[2], function(){
-      var actual = url.resolveObject(url.parse(relativeTest[1]), relativeTest[0]),
-          expected = url.parse(relativeTest[2]);
+}
 
-      //Trigger the getter caches for deep equality
-      actual.href; expected.query;
-      expected.href; expected.query;
+relativeTests2.forEach(function(relativeTest) {
+    test('parse relative ' + relativeTest[2], function(assert){
+        var actual = url.resolveObject(
+            url.parse(relativeTest[1]),
+            relativeTest[0]
+        );
+        var expected = url.parse(relativeTest[2]);
 
-      assert.deepEqual(actual, expected,
-        JSON.stringify(actual, null, "    ") +
-        JSON.stringify(expected, null, "    ")
+        //Trigger the getter caches for deep equality
+        actual.href; expected.query;
+        expected.href; expected.query;
 
+        assert.deepEqual(
+            actual,
+            expected
         );
 
-      var expected = relativeTest[2],
-          actual = url.format(actual);
+        var actualUrl = url.format(actual);
+        var expectedUrl = relativeTest[2];
 
-      assert.equal(actual, expected);
+        assert.strictEqual(actualUrl, expectedUrl);
+
+        assert.end();
     });
-  });
 });
-

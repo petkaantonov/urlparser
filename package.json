@@ -11,7 +11,8 @@
     "performance"
   ],
   "scripts": {
-    "test": "grunt test",
+    "test": "node ./test/index.js | tap-spec",
+    "dot": "node ./test/index.js | tap-dot",
     "bench": "node ./benchmark/urlparser.js",
     "bench-node": "node ./benchmark/nodecore.js"
   },
@@ -33,13 +34,9 @@
     "punycode": "^1.3.2"
   },
   "devDependencies": {
-    "grunt": "~0.4.1",
-    "grunt-contrib-jshint": "~0.6.4",
-    "jshint-stylish": "latest",
-    "mocha": "~1.12.1",
-    "grunt-cli": "~0.1.9",
-    "benchmark": "~1.0.0",
-    "semver-utils": "~1.1.0"
+    "tap-dot": "^0.2.3",
+    "tap-spec": "^2.1.1",
+    "tape": "^3.0.3"
   },
   "readmeFilename": "README.md",
   "main": "./src/urlparser.js"
