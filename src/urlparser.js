@@ -563,9 +563,9 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
                 }
                 var hostname = str.slice(start + 1, i).toLowerCase();
                 this.hostname = hostname;
-                this.host = this._port > 0
-                    ? "[" + hostname + "]:" + this._port
-                    : "[" + hostname + "]";
+                this.host = this._port > 0 ?
+                    "[" + hostname + "]:" + this._port :
+                    "[" + hostname + "]";
                 this.pathname = "/";
                 return i + portLength + 1;
             }
