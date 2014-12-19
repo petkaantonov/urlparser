@@ -686,7 +686,7 @@ function Url$_getComponentEscaped(str, start, end) {
         var ch = str.charCodeAt(i);
         var escaped = autoEscapeMap[ch];
 
-        if (escaped !== "") {
+        if (escaped !== "" && escaped !== undefined) {
             if (cur < i) ret += str.slice(cur, i);
             ret += escaped;
             cur = i + 1;

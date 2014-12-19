@@ -148,6 +148,9 @@ describe("basic tests", function() {
         assert(a.pathname === "/a%7Bb%7D%7B%7D");
         assert(a.search === "?a%7Bb%7D%7B%7D");
         assert(a.href === "http://www.google.com/a%7Bb%7D%7B%7D?a%7Bb%7D%7B%7D#a%7Bb%7D%7B%7D");
+
+        a = Url.parse("http://www.google.com/gâteaux_d'ange.jpg");
+        assert(a.pathname === "/gâteaux_d%27ange.jpg");
     });
 
     specify("weird protocols", function() {
