@@ -161,9 +161,6 @@ Url.prototype.format = function Url$format() {
     if (slashes && pathname && pathname.charCodeAt(0) !== 0x2F /*'/'*/) {
         pathname = "/" + pathname;
     }
-    else if (!slashes && pathname === "/") {
-        pathname = "";
-    }
     if (search && search.charCodeAt(0) !== 0x3F /*'?'*/)
         search = "?" + search;
     if (hash && hash.charCodeAt(0) !== 0x23 /*'#'*/)
