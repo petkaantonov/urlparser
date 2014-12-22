@@ -1,4 +1,6 @@
+
 module.exports = runBenchmark;
+
 
 var n = 25 * 100;
 
@@ -20,48 +22,64 @@ var paths = [
 function runBenchmark(url) {
     // Lazy evaluation vs eager evaluation is unfair, let's read
     // the properties from the result.
-    benchmark('parse()', url.parse.bind(url), [
-        'auth',
-        'slashes',
-        'host',
-        'hostname',
-        'hash',
-        'search',
-        'pathname'
-    ]);
-
-    benchmark('format()', url.format.bind(url));
-
+    benchmark('parse()', benchmarkParse);
+    benchmark('format()', benchmarkFormat);
     paths.forEach(function(p) {
-        benchmark('resolve("' + p + '")', function(u) {
-            url.resolve(u, p);
+        benchmark('resolve("' + p + '")', function() {
+            benchmarkResolve(p);
         });
     });
 }
 
-function benchmark(name, fun, readKeys) {
+function benchmarkParse() {
+    var _urls = urls;
+    var _n = n;
+    var url = runBenchmark.url;
+    for (var i = 0; i < _n; ++i) {
+        for (var j = 0, k = _urls.length; j < k; ++j) {
+            var result = url.parse(_urls[j]);
+            if (result.query === false) die;
+            if (result.href === false) die;
+            if (result.path === false) die;
+            if (result.port === false) die;
+            if (result.protocol === false) die;
+        }
+    }
+}
+
+function benchmarkFormat() {
+    var _urls = urls;
+    var _n = n;
+    var url = runBenchmark.url;
+    for (var i = 0; i < _n; ++i) {
+        for (var j = 0, k = _urls.length; j < k; ++j) {
+            url.format(_urls[j]);
+        }
+    }
+}
+
+function benchmarkResolve(path) {
+    var _urls = urls;
+    var _n = n;
+    var url = runBenchmark.url;
+    for (var i = 0; i < _n; ++i) {
+        for (var j = 0, k = _urls.length; j < k; ++j) {
+            url.format(_urls[j], path);
+        }
+    }
+}
+
+function benchmark(name, fun) {
     var results = [];
 
     function pushResult(key) {
         results.push(this[key]);
     }
-
-    function run() {
-        for (var i = 0; i < n; ++i) {
-            for (var j = 0, k = urls.length; j < k; ++j) {
-                var result = fun(urls[j]);
-
-                if (Array.isArray(readKeys)) {
-                    readKeys.forEach(pushResult);
-                } else {
-                    results.push(result);
-                }
-            }
-        }
-    }
+    fun();
+    fun();
 
     var timestamp = process.hrtime();
-    run();
+    fun();
     timestamp = process.hrtime(timestamp);
 
     var seconds = timestamp[0];
