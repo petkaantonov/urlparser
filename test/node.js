@@ -1002,6 +1002,11 @@ var formatTests = {
     'hash': '#frag',
     'search': '?abc=the#1?&foo=bar',
     'pathname': '/fooA100%mBr',
+  },
+
+  // only minimal pathname
+  '/': {
+    'pathname': '/',
   }
 };
 
