@@ -25,7 +25,7 @@ var url = require("fast-url-parser");
 // the querystringparser module supports nested properties
 url.queryString = require("querystringparser");
 var parsed = Url.parse('/path?user[name][first]=tj&user[name][last]=holowaychuk', true);
-console.log(parsed.url);
+console.log(parsed.query);
 //{ user: { name: { first: 'tj', last: 'holowaychuk' } } }
 ```
 
