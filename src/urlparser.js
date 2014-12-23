@@ -72,7 +72,7 @@ function Url$parse(str, parseQueryString, hostDenotesSlash) {
     if (start <= end) {
         var ch = str.charCodeAt(start);
 
-        if (ch === 0x2F /*'/'*/) {
+        if (ch === 0x2F /*'/'*/ || ch === 0x5C /*'\'*/) {
             this._parsePath(str, start, end);
         }
         else if (ch === 0x3F /*'?'*/) {
@@ -484,8 +484,10 @@ Url.prototype._parsePort = function Url$_parsePort(str, start, end) {
 Url.prototype._parseHost =
 function Url$_parseHost(str, start, end, slashesDenoteHost) {
     var hostEndingCharacters = this._hostEndingCharacters;
-    if (str.charCodeAt(start) === 0x2F /*'/'*/ &&
-        str.charCodeAt(start + 1) === 0x2F /*'/'*/) {
+    var first = str.charCodeAt(start);
+    var second = str.charCodeAt(start + 1);
+    if ((first === 0x2F /*'/'*/ || first === 0x5C /*'\'*/) &&
+        (second === 0x2F /*'/'*/ || second === 0x5C /*'\'*/)) {
         this.slashes = true;
 
         //The string starts with //
@@ -677,11 +679,12 @@ Url.prototype._clone = function Url$_clone() {
 };
 
 Url.prototype._getComponentEscaped =
-function Url$_getComponentEscaped(str, start, end) {
+function Url$_getComponentEscaped(str, start, end, isAfterHash) {
     var cur = start;
     var i = start;
     var ret = "";
-    var autoEscapeMap = this._autoEscapeMap;
+    var autoEscapeMap = isAfterHash
+        ? this._afterHashAutoEscapeMap : this._autoEscapeMap;
     for (; i <= end; ++i) {
         var ch = str.charCodeAt(i);
         var escaped = autoEscapeMap[ch];
@@ -727,7 +730,7 @@ function Url$_parsePath(str, start, end) {
 
     var path;
     if (escape) {
-        path = this._getComponentEscaped(str, pathStart, pathEnd);
+        path = this._getComponentEscaped(str, pathStart, pathEnd, false);
     }
     else {
         path = str.slice(pathStart, pathEnd + 1);
@@ -761,7 +764,7 @@ Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
 
     var query;
     if (escape) {
-        query = this._getComponentEscaped(str, queryStart, queryEnd);
+        query = this._getComponentEscaped(str, queryStart, queryEnd, false);
     }
     else {
         query = str.slice(queryStart, queryEnd + 1);
@@ -774,7 +777,7 @@ Url.prototype._parseHash = function Url$_parseHash(str, start, end) {
         this.hash = "";
         return;
     }
-    this.hash = this._getComponentEscaped(str, start, end);
+    this.hash = this._getComponentEscaped(str, start, end, true);
 };
 
 Object.defineProperty(Url.prototype, "port", {
@@ -979,7 +982,8 @@ for (var i = 0, len = autoEscape.length; i < len; ++i) {
     }
     autoEscapeMap[c.charCodeAt(0)] = esc;
 }
-
+var afterHashAutoEscapeMap = autoEscapeMap.slice();
+autoEscapeMap[0x5C /*'\'*/] = "/";
 
 var slashProtocols = Url.prototype._slashProtocols = {
     http: true,
@@ -1006,7 +1010,7 @@ Url.prototype._protocolCharacters = makeAsciiTable([
 ]);
 
 Url.prototype._hostEndingCharacters = makeAsciiTable([
-    0x23 /*'#'*/, 0x3F /*'?'*/, 0x2F /*'/'*/
+    0x23 /*'#'*/, 0x3F /*'?'*/, 0x2F /*'/'*/, 0x5C /*'\'*/
 ]);
 
 Url.prototype._autoEscapeCharacters = makeAsciiTable(
@@ -1019,7 +1023,7 @@ Url.prototype._autoEscapeCharacters = makeAsciiTable(
 Url.prototype._noPrependSlashHostEnders = makeAsciiTable(
     [
         "<", ">", "'", "`", " ", "\r",
-        "\n", "\t", "{", "}", "|", "\\",
+        "\n", "\t", "{", "}", "|",
         "^", "`", "\"", "%", ";"
     ].map(function(v) {
         return v.charCodeAt(0);
@@ -1027,6 +1031,7 @@ Url.prototype._noPrependSlashHostEnders = makeAsciiTable(
 );
 
 Url.prototype._autoEscapeMap = autoEscapeMap;
+Url.prototype._afterHashAutoEscapeMap = afterHashAutoEscapeMap;
 
 module.exports = Url;
 
