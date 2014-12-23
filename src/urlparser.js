@@ -161,9 +161,6 @@ Url.prototype.format = function Url$format() {
     if (slashes && pathname && pathname.charCodeAt(0) !== 0x2F /*'/'*/) {
         pathname = "/" + pathname;
     }
-    else if (!slashes && pathname === "/") {
-        pathname = "";
-    }
     if (search && search.charCodeAt(0) !== 0x3F /*'?'*/)
         search = "?" + search;
     if (hash && hash.charCodeAt(0) !== 0x23 /*'#'*/)
@@ -340,7 +337,7 @@ Url.prototype.resolveObject = function Url$resolveObject(relative) {
     var up = 0;
     for (var i = srcPath.length; i >= 0; i--) {
         last = srcPath[i];
-        if (last == ".") {
+        if (last === ".") {
             srcPath.splice(i, 1);
         } else if (last === "..") {
             srcPath.splice(i, 1);
@@ -563,9 +560,9 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
                 }
                 var hostname = str.slice(start + 1, i).toLowerCase();
                 this.hostname = hostname;
-                this.host = this._port > 0
-                    ? "[" + hostname + "]:" + this._port
-                    : "[" + hostname + "]";
+                this.host = this._port > 0 ?
+                    "[" + hostname + "]:" + this._port :
+                    "[" + hostname + "]";
                 this.pathname = "/";
                 return i + portLength + 1;
             }
@@ -1031,7 +1028,7 @@ Url.prototype._autoEscapeMap = autoEscapeMap;
 module.exports = Url;
 
 Url.replace = function Url$Replace() {
-    require.cache["url"] = {
+    require.cache.url = {
         exports: Url
     };
 };
