@@ -153,6 +153,9 @@ test("autoescape some chars in the result", function t(assert) {
     assert.strictEqual(a.search, "?a%7Bb%7D%7B%7D");
     assert.strictEqual(a.href, "http://www.google.com/a%7Bb%7D%7B%7D?a%7Bb%7D%7B%7D#a%7Bb%7D%7B%7D");
 
+    a = Url.parse("http://www.google.com/gâteaux_d'ange.jpg");
+    assert.strictEqual(a.pathname, "/gâteaux_d%27ange.jpg");
+
     assert.end();
 });
 
