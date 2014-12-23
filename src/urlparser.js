@@ -41,6 +41,9 @@ function Url() {
 }
 
 var querystring = require("querystring");
+
+Url.queryString = querystring;
+
 Url.prototype.parse =
 function Url$parse(str, parseQueryString, hostDenotesSlash) {
     if (typeof str !== "string") {
@@ -101,7 +104,7 @@ function Url$parse(str, parseQueryString, hostDenotesSlash) {
             search = search.slice(1);
         }
         //This calls a setter function, there is no .query data property
-        this.query = querystring.parse(search);
+        this.query = Url.queryString.parse(search);
     }
 };
 
@@ -131,7 +134,7 @@ Url.prototype.format = function Url$format() {
     //Cache the result of the getter function
     var q = this.query;
     if (q && typeof q === "object") {
-        query = querystring.stringify(q);
+        query = Url.queryString.stringify(q);
     }
 
     if (!search) {

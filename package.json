@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "jshint": "^2.5.10",
+    "querystringparser": "^0.1.1",
     "tap-dot": "^0.2.3",
     "tap-spec": "^2.1.1",
     "tape": "^3.0.3"

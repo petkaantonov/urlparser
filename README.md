@@ -16,6 +16,19 @@ This module has exactly the same API and semantics as the `require("url");`- mod
 
 See [Node.JS URL API documentation](http://nodejs.org/docs/latest/api/url.html).
 
+In addition, you may inject a custom query string implementation by setting the `url.queryString` property. The module export object must expose the methods `.parse` and `.stringify`. By default the core `"querystring"` module is used.
+
+Example:
+
+```js
+var url = require("fast-url-parser");
+// the querystringparser module supports nested properties
+url.queryString = require("querystringparser");
+var parsed = Url.parse('/path?user[name][first]=tj&user[name][last]=holowaychuk', true);
+console.log(parsed.url);
+//{ user: { name: { first: 'tj', last: 'holowaychuk' } } }
+```
+
 If in your application you may want all modules use this parser automatically, you can do so by inserting this line at the beginning of your application:
 
 ```js

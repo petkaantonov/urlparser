@@ -253,3 +253,21 @@ test("replace node\'s url", function t(assert) {
 
     assert.end();
 });
+
+
+test("custom querystring implementation", function t(assert) {
+    var qs = require("querystringparser");
+    Url.queryString = qs;
+    var a = Url.parse('/path?user[name][first]=tj&user[name][last]=holowaychuk', true);
+
+    assert.deepEqual(a.query, {
+        user: {
+            name: {
+                first: 'tj',
+                last: 'holowaychuk'
+            }
+        }
+    });
+    assert.strictEqual('/path?user[name][first]=tj&user[name][last]=holowaychuk', a.format());
+    assert.end();
+});
