@@ -1104,6 +1104,34 @@ var parseTestsWithQueryString = {
     'search': '',
     'pathname': '/',
     'path': '/'
+  },
+  '/example': {
+    protocol: null,
+    slashes: null,
+    auth: null,
+    host: null,
+    port: null,
+    hostname: null,
+    hash: null,
+    search: '',
+    query: {},
+    pathname: '/example',
+    path: '/example',
+    href: '/example'
+  },
+  '/example?query=value':{
+    protocol: null,
+    slashes: null,
+    auth: null,
+    host: null,
+    port: null,
+    hostname: null,
+    hash: null,
+    search: '?query=value',
+    query: { query: 'value' },
+    pathname: '/example',
+    path: '/example?query=value',
+    href: '/example?query=value'
   }
 };
 
