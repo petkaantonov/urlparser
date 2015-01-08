@@ -679,12 +679,12 @@ Url.prototype._clone = function Url$_clone() {
 };
 
 Url.prototype._getComponentEscaped =
-function Url$_getComponentEscaped(str, start, end, isAfterHash) {
+function Url$_getComponentEscaped(str, start, end, isAfterQuery) {
     var cur = start;
     var i = start;
     var ret = "";
-    var autoEscapeMap = isAfterHash
-        ? this._afterHashAutoEscapeMap : this._autoEscapeMap;
+    var autoEscapeMap = isAfterQuery
+        ? this._afterQueryAutoEscapeMap : this._autoEscapeMap;
     for (; i <= end; ++i) {
         var ch = str.charCodeAt(i);
         var escaped = autoEscapeMap[ch];
@@ -764,7 +764,7 @@ Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
 
     var query;
     if (escape) {
-        query = this._getComponentEscaped(str, queryStart, queryEnd, false);
+        query = this._getComponentEscaped(str, queryStart, queryEnd, true);
     }
     else {
         query = str.slice(queryStart, queryEnd + 1);
@@ -982,7 +982,7 @@ for (var i = 0, len = autoEscape.length; i < len; ++i) {
     }
     autoEscapeMap[c.charCodeAt(0)] = esc;
 }
-var afterHashAutoEscapeMap = autoEscapeMap.slice();
+var afterQueryAutoEscapeMap = autoEscapeMap.slice();
 autoEscapeMap[0x5C /*'\'*/] = "/";
 
 var slashProtocols = Url.prototype._slashProtocols = {
@@ -1031,7 +1031,7 @@ Url.prototype._noPrependSlashHostEnders = makeAsciiTable(
 );
 
 Url.prototype._autoEscapeMap = autoEscapeMap;
-Url.prototype._afterHashAutoEscapeMap = afterHashAutoEscapeMap;
+Url.prototype._afterQueryAutoEscapeMap = afterQueryAutoEscapeMap;
 
 module.exports = Url;
 
