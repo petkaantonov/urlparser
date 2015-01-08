@@ -1,7 +1,7 @@
 {
   "name": "fast-url-parser",
   "description": "Extremely fast implementation of node core url library",
-  "version": "1.1.0-0",
+  "version": "1.1.1",
   "keywords": [
     "fast",
     "parse",
