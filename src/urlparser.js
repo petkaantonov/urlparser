@@ -602,8 +602,12 @@ function Url$_parseHost(str, start, end, slashesDenoteHost) {
             else if (0x41 /*'A'*/ <= ch && ch <= 0x5A /*'Z'*/) {
                 doLowerCase = true;
             }
-            else if (!(ch === 0x2D /*'-'*/ || ch === 0x5F /*'_'*/ ||
-                (0x30 /*'0'*/ <= ch && ch <= 0x39 /*'9'*/))) {
+            //Valid characters other than ASCII letters -, _, +, 0-9
+            else if (!(ch === 0x2D /*'-'*/ ||
+                       ch === 0x5F /*'_'*/ ||
+                       ch === 0x2B /*'+'*/ ||
+                       (0x30 /*'0'*/ <= ch && ch <= 0x39 /*'9'*/))
+                ) {
                 if (hostEndingCharacters[ch] === 0 &&
                     this._noPrependSlashHostEnders[ch] === 0) {
                     this._prependSlash = true;
