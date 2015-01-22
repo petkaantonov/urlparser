@@ -159,6 +159,52 @@ test("autoescape some chars in the result", function t(assert) {
     assert.end();
 });
 
+test("disable autoescape some chars in the result", function t(assert) {
+    a = Url.parse("http://www.google.com# k", false, false, true);
+    assert.strictEqual(a.hash, "# k");
+
+    a = Url.parse("http://www.google.com? k", false, false, true);
+    assert.strictEqual(a.search, "? k");
+
+    a = Url.parse("http://www.google.com/ k", false, false, true);
+    assert.strictEqual(a.pathname, "/ k");
+
+    a = Url.parse("http://www.google.com#{}", false, false, true);
+    assert.strictEqual(a.hash, "#{}");
+
+    a = Url.parse("http://www.google.com?{}", false, false, true);
+    assert.strictEqual(a.search, "?{}");
+
+    a = Url.parse("http://www.google.com/{}", false, false, true);
+    assert.strictEqual(a.pathname, "/{}");
+
+    a = Url.parse("http://www.google.com/{}?{}#{}", false, false, true);
+    assert.strictEqual(a.hash, "#{}");
+    assert.strictEqual(a.search, "?{}");
+    assert.strictEqual(a.pathname, "/{}");
+    assert.strictEqual(a.href, "http://www.google.com/{}?{}#{}");
+
+    a = Url.parse("http://www.google.com#a{b}{}", false, false, true);
+    assert.strictEqual(a.hash, "#a{b}{}");
+
+    a = Url.parse("http://www.google.com?a{b}{}", false, false, true);
+    assert.strictEqual(a.search, "?a{b}{}");
+
+    a = Url.parse("http://www.google.com/a{b}{}", false, false, true);
+    assert.strictEqual(a.pathname, "/a{b}{}");
+
+    a = Url.parse("http://www.google.com/a{b}{}?a{b}{}#a{b}{}", false, false, true);
+    assert.strictEqual(a.hash, "#a{b}{}");
+    assert.strictEqual(a.pathname, "/a{b}{}");
+    assert.strictEqual(a.search, "?a{b}{}");
+    assert.strictEqual(a.href, "http://www.google.com/a{b}{}?a{b}{}#a{b}{}");
+
+    a = Url.parse("http://www.google.com/gâteaux_d'ange.jpg", false, false, true);
+    assert.strictEqual(a.pathname, "/gâteaux_d'ange.jpg");
+
+    assert.end();
+});
+
 test("weird protocols", function t(assert) {
     a = Url.parse("javascript:alert('hello world');");
     assert.strictEqual(a.host, null);

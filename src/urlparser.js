@@ -45,7 +45,7 @@ var querystring = require("querystring");
 Url.queryString = querystring;
 
 Url.prototype.parse =
-function Url$parse(str, parseQueryString, hostDenotesSlash) {
+function Url$parse(str, parseQueryString, hostDenotesSlash, disableAutoEscapeChars) {
     if (typeof str !== "string") {
         throw new TypeError("Parameter 'url' must be a string, not " +
             typeof str);
@@ -73,16 +73,16 @@ function Url$parse(str, parseQueryString, hostDenotesSlash) {
         var ch = str.charCodeAt(start);
 
         if (ch === 0x2F /*'/'*/ || ch === 0x5C /*'\'*/) {
-            this._parsePath(str, start, end);
+            this._parsePath(str, start, end, disableAutoEscapeChars);
         }
         else if (ch === 0x3F /*'?'*/) {
-            this._parseQuery(str, start, end);
+            this._parseQuery(str, start, end, disableAutoEscapeChars);
         }
         else if (ch === 0x23 /*'#'*/) {
-            this._parseHash(str, start, end);
+          this._parseHash(str, start, end, disableAutoEscapeChars);
         }
         else if (this._protocol !== "javascript") {
-            this._parsePath(str, start, end);
+            this._parsePath(str, start, end, disableAutoEscapeChars);
         }
         else { //For javascript the pathname is just the rest of it
             this.pathname = str.slice(start, end + 1 );
@@ -687,8 +687,8 @@ function Url$_getComponentEscaped(str, start, end, isAfterQuery) {
     var cur = start;
     var i = start;
     var ret = "";
-    var autoEscapeMap = isAfterQuery
-        ? this._afterQueryAutoEscapeMap : this._autoEscapeMap;
+    var autoEscapeMap = isAfterQuery ?
+        this._afterQueryAutoEscapeMap : this._autoEscapeMap;
     for (; i <= end; ++i) {
         var ch = str.charCodeAt(i);
         var escaped = autoEscapeMap[ch];
@@ -704,7 +704,7 @@ function Url$_getComponentEscaped(str, start, end, isAfterQuery) {
 };
 
 Url.prototype._parsePath =
-function Url$_parsePath(str, start, end) {
+function Url$_parsePath(str, start, end, disableAutoEscapeChars) {
     var pathStart = start;
     var pathEnd = end;
     var escape = false;
@@ -713,16 +713,16 @@ function Url$_parsePath(str, start, end) {
     for (var i = start; i <= end; ++i) {
         var ch = str.charCodeAt(i);
         if (ch === 0x23 /*'#'*/) {
-            this._parseHash(str, i, end);
+          this._parseHash(str, i, end, disableAutoEscapeChars);
             pathEnd = i - 1;
             break;
         }
         else if (ch === 0x3F /*'?'*/) {
-            this._parseQuery(str, i, end);
+            this._parseQuery(str, i, end, disableAutoEscapeChars);
             pathEnd = i - 1;
             break;
         }
-        else if (!escape && autoEscapeCharacters[ch] === 1) {
+        else if (!disableAutoEscapeChars && !escape && autoEscapeCharacters[ch] === 1) {
             escape = true;
         }
     }
@@ -742,7 +742,7 @@ function Url$_parsePath(str, start, end) {
     this.pathname = this._prependSlash ? "/" + path : path;
 };
 
-Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
+Url.prototype._parseQuery = function Url$_parseQuery(str, start, end, disableAutoEscapeChars) {
     var queryStart = start;
     var queryEnd = end;
     var escape = false;
@@ -752,11 +752,11 @@ Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
         var ch = str.charCodeAt(i);
 
         if (ch === 0x23 /*'#'*/) {
-            this._parseHash(str, i, end);
+            this._parseHash(str, i, end, disableAutoEscapeChars);
             queryEnd = i - 1;
             break;
         }
-        else if (!escape && autoEscapeCharacters[ch] === 1) {
+        else if (!disableAutoEscapeChars && !escape && autoEscapeCharacters[ch] === 1) {
             escape = true;
         }
     }
@@ -776,12 +776,14 @@ Url.prototype._parseQuery = function Url$_parseQuery(str, start, end) {
     this.search = query;
 };
 
-Url.prototype._parseHash = function Url$_parseHash(str, start, end) {
+Url.prototype._parseHash = function Url$_parseHash(str, start, end, disableAutoEscapeChars) {
     if (start > end) {
         this.hash = "";
         return;
     }
-    this.hash = this._getComponentEscaped(str, start, end, true);
+
+    this.hash = disableAutoEscapeChars ?
+        str.slice(start, end + 1) : this._getComponentEscaped(str, start, end, true);
 };
 
 Object.defineProperty(Url.prototype, "port", {
@@ -871,10 +873,10 @@ Object.defineProperty(Url.prototype, "href", {
     }
 });
 
-Url.parse = function Url$Parse(str, parseQueryString, hostDenotesSlash) {
+Url.parse = function Url$Parse(str, parseQueryString, hostDenotesSlash, disableAutoEscapeChars) {
     if (str instanceof Url) return str;
     var ret = new Url();
-    ret.parse(str, !!parseQueryString, !!hostDenotesSlash);
+    ret.parse(str, !!parseQueryString, !!hostDenotesSlash, !!disableAutoEscapeChars);
     return ret;
 };
 
