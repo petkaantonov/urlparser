@@ -18,6 +18,8 @@ See [Node.JS URL API documentation](http://nodejs.org/docs/latest/api/url.html).
 
 In addition, you may inject a custom query string implementation by setting the `url.queryString` property. The module export object must expose the methods `.parse` and `.stringify`. By default the core `"querystring"` module is used.
 
+You may disable automatic escaping of some characters when parsing an URL by passing `true` as a forth argument so that: `url.format(url.parse(yourUrl, false, false, true)) == yourUrl`
+
 Example:
 
 ```js
