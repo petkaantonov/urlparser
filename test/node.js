@@ -852,8 +852,83 @@ var parseTests = {
     'pathname': '%0D%0Ad/e',
     'path': '%0D%0Ad/e?f',
     'href': 'http://a%0D%22%20%09%0A%3C\'b:b@c/%0D%0Ad/e?f'
-  }
+  },
 
+  // git urls used by npm
+  'git+ssh://git@github.com:npm/npm': {
+    "protocol": "git+ssh:",
+    "slashes": true,
+    "auth": "git",
+    "host": "github.com",
+    "port": null,
+    "hostname": "github.com",
+    "hash": null,
+    "search": null,
+    "query": null,
+    "pathname": "/:npm/npm",
+    "path": "/:npm/npm",
+    "href": "git+ssh://git@github.com/:npm/npm"
+  },
+
+  'git+ssh://git@github.com:npm': {
+    "protocol": "git+ssh:",
+    "slashes": true,
+    "auth": "git",
+    "host": "github.com",
+    "port": null,
+    "hostname": "github.com",
+    "hash": null,
+    "search": null,
+    "query": null,
+    "pathname": "/:npm",
+    "path": "/:npm",
+    "href": "git+ssh://git@github.com/:npm"
+  },
+
+  'git+ssh://git@github.com:/npm': {
+    "protocol": "git+ssh:",
+    "slashes": true,
+    "auth": "git",
+    "host": "github.com",
+    "port": null,
+    "hostname": "github.com",
+    "hash": null,
+    "search": null,
+    "query": null,
+    "pathname": "/npm",
+    "path": "/npm",
+    "href": "git+ssh://git@github.com/npm"
+  },
+
+  'git+ssh://git@github.com:80npm': {
+    "protocol": "git+ssh:",
+    "slashes": true,
+    "auth": "git",
+    "host": "github.com",
+    "port": null,
+    "hostname": "github.com",
+    "hash": null,
+    "search": null,
+    "query": null,
+    "pathname": "/:80npm",
+    "path": "/:80npm",
+    "href": "git+ssh://git@github.com/:80npm"
+  },
+
+  'git+ssh://git@github.com:80': {
+    "protocol": "git+ssh:",
+    "slashes": true,
+    "auth": "git",
+    "host": "github.com:80",
+    "port": "80",
+    "hostname": "github.com",
+    "hash": null,
+    "search": null,
+    "query": null,
+    "pathname": null,
+    "path": null,
+    "href": "git+ssh://git@github.com:80"
+  }
 };
 
 Object.keys(parseTests).forEach(function testUrl(u) {

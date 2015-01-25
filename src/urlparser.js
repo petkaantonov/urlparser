@@ -462,6 +462,7 @@ Url.prototype._parsePort = function Url$_parsePort(str, start, end) {
     var port = 0;
     //Distinguish between :0 and : (no port number at all)
     var hadChars = false;
+    var validPort = true;
 
     for (var i = start; i <= end; ++i) {
         var ch = str.charCodeAt(i);
@@ -470,10 +471,19 @@ Url.prototype._parsePort = function Url$_parsePort(str, start, end) {
             port = (10 * port) + (ch - 0x30 /*'0'*/);
             hadChars = true;
         }
-        else break;
+        else {
+            validPort = false;
+            if (ch === 0x5C/*'\'*/ || ch === 0x2F/*'/'*/) {
+                validPort = true;
+            }
+            break;
+        }
 
     }
-    if (port === 0 && !hadChars) {
+    if ((port === 0 && !hadChars) || !validPort) {
+        if (!validPort) {
+            this._port = -2;
+        }
         return 0;
     }
 
@@ -709,6 +719,7 @@ function Url$_parsePath(str, start, end, disableAutoEscapeChars) {
     var pathEnd = end;
     var escape = false;
     var autoEscapeCharacters = this._autoEscapeCharacters;
+    var prePath = this._port === -2 ? "/:" : "";
 
     for (var i = start; i <= end; ++i) {
         var ch = str.charCodeAt(i);
@@ -728,7 +739,7 @@ function Url$_parsePath(str, start, end, disableAutoEscapeChars) {
     }
 
     if (pathStart > pathEnd) {
-        this.pathname = "/";
+        this.pathname = prePath === "" ? "/" : prePath;
         return;
     }
 
@@ -739,7 +750,9 @@ function Url$_parsePath(str, start, end, disableAutoEscapeChars) {
     else {
         path = str.slice(pathStart, pathEnd + 1);
     }
-    this.pathname = this._prependSlash ? "/" + path : path;
+    this.pathname = prePath === ""
+        ? (this._prependSlash ? "/" + path : path)
+        : prePath + path;
 };
 
 Url.prototype._parseQuery = function Url$_parseQuery(str, start, end, disableAutoEscapeChars) {
