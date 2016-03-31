@@ -26,12 +26,12 @@ Example:
 var url = require("fast-url-parser");
 // the querystringparser module supports nested properties
 url.queryString = require("querystringparser");
-var parsed = Url.parse('/path?user[name][first]=tj&user[name][last]=holowaychuk', true);
+var parsed = url.parse('/path?user[name][first]=tj&user[name][last]=holowaychuk', true);
 console.log(parsed.query);
 //{ user: { name: { first: 'tj', last: 'holowaychuk' } } }
 ```
 
-If in your application you may want all modules use this parser automatically, you can do so by inserting this line at the beginning of your application:
+If in your application you want all modules use this parser automatically, you can do so by inserting this line at the beginning of your application:
 
 ```js
 require("fast-url-parser").replace();
