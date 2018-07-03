@@ -1,8 +1,8 @@
-#Introduction
+# Introduction
 
 Fast implementation of an url parser for node.js.
 
-#Quick start
+# Quick start
 
     npm install fast-url-parser
 
@@ -10,15 +10,13 @@ Fast implementation of an url parser for node.js.
 var url = require("fast-url-parser");
 ```
 
-#API
+# API
 
-This module has exactly the same API and semantics as the `require("url");`- module that comes with node.
+This module has exactly the same API and semantics as Node.js's [`url`](https://nodejs.org/docs/latest/api/url.html) module.
 
-See [Node.JS URL API documentation](http://nodejs.org/docs/latest/api/url.html).
+In addition, you may inject a custom query string implementation by setting the `url.queryString` property. The module's `export` object must expose the methods `.parse` and `.stringify`. By default the core [`querystring`](https://nodejs.org/docs/latest/api/querystring.html) module is used.
 
-In addition, you may inject a custom query string implementation by setting the `url.queryString` property. The module export object must expose the methods `.parse` and `.stringify`. By default the core `"querystring"` module is used.
-
-You may disable automatic escaping of some characters when parsing an URL by passing `true` as a forth argument so that: `url.format(url.parse(yourUrl, false, false, true)) == yourUrl`
+You may disable automatic escaping of some characters when parsing an URL by passing `true` as a fourth argument: `url.format(url.parse(yourUrl, false, false, true)) == yourUrl`
 
 Example:
 
@@ -31,15 +29,15 @@ console.log(parsed.query);
 //{ user: { name: { first: 'tj', last: 'holowaychuk' } } }
 ```
 
-If in your application you may want all modules use this parser automatically, you can do so by inserting this line at the beginning of your application:
+If you want all modules in your application to use this parser automatically, insert this line at the beginning of your application:
 
 ```js
 require("fast-url-parser").replace();
 ```
 
-Anything that now calls `require("url")` will instead get an instance of this module instead of the url parser that comes with node core.
+Anything that calls `require("url")` will now get an instance of `fast-url-parser` instead of Node.js's core `url` module.
 
-#Performance
+# Performance
 
     Petka Antonov@PETKAANTONOV-PC ~/urlparser (master)
     $ node ./benchmark/urlparser.js
@@ -59,7 +57,7 @@ Anything that now calls `require("url")` will instead get an instance of this mo
     misc/url.js resolve("http://nodejs.org"): 6491.1
     misc/url.js resolve("./foo/bar?baz"): 6968.4
 
-#License
+# License
 
 MIT License:
 
