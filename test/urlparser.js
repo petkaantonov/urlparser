@@ -102,6 +102,13 @@ test("auth stuff", function t(assert) {
     assert.strictEqual(a.pathname, "/");
     assert.strictEqual(a.auth, "a@b");
 
+    a = Url.parse("http://a%b@c/");
+    assert.strictEqual(a.host, "c");
+    assert.strictEqual(a.protocol, "http:");
+    assert.strictEqual(a.path, "/");
+    assert.strictEqual(a.pathname, "/");
+    assert.strictEqual(a.auth, "a%b");
+
     a = Url.parse("http://a@b?@c");
     assert.strictEqual(a.host, "b");
     assert.strictEqual(a.protocol, "http:");

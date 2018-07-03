@@ -451,7 +451,9 @@ Url.prototype._parseProtocol = function Url$_parseProtocol(str, start, end) {
 Url.prototype._parseAuth = function Url$_parseAuth(str, start, end, decode) {
     var auth = str.slice(start, end + 1);
     if (decode) {
-        auth = decodeURIComponent(auth);
+        try {
+            auth = decodeURIComponent(auth);
+        } catch (e) {} // Ignore decode errors
     }
     this.auth = auth;
 };
@@ -750,9 +752,9 @@ function Url$_parsePath(str, start, end, disableAutoEscapeChars) {
     else {
         path = str.slice(pathStart, pathEnd + 1);
     }
-    this.pathname = prePath === ""
-        ? (this._prependSlash ? "/" + path : path)
-        : prePath + path;
+    this.pathname = prePath === "" ?
+        (this._prependSlash ? "/" + path : path) :
+        prePath + path;
 };
 
 Url.prototype._parseQuery = function Url$_parseQuery(str, start, end, disableAutoEscapeChars) {
